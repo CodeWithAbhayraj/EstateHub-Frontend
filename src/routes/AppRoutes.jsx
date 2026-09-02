@@ -6,6 +6,8 @@ import PropertyDetails from "../pages/public/PropertyDetails";
 import Login from "../pages/public/Login";
 import Register from "../pages/public/Register";
 
+import BuyerDashboard from "../pages/buyer/BuyerDashboard";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -16,6 +18,9 @@ function AppRoutes() {
         <Route path="/properties/:id" element={<PropertyDetails />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Buyer Routes */}
+        <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
       </Routes>
     </BrowserRouter>
   );
