@@ -1,10 +1,18 @@
 import api from "./axios";
 
 // ==========================================
-// BUYER - CREATE VISIT
+// ADMIN - GET ALL VISITS
 // ==========================================
-export const createVisit = async (visitData) => {
-  const response = await api.post("/visits", visitData);
+export const getAllVisits = async () => {
+  const response = await api.get("/visits");
+  return response.data;
+};
+
+// ==========================================
+// GET VISIT BY ID
+// ==========================================
+export const getVisitById = async (id) => {
+  const response = await api.get(`/visits/${id}`);
   return response.data;
 };
 
@@ -13,22 +21,6 @@ export const createVisit = async (visitData) => {
 // ==========================================
 export const getMyVisits = async () => {
   const response = await api.get("/visits/my");
-  return response.data;
-};
-
-// ==========================================
-// BUYER / ADMIN - GET VISIT BY ID
-// ==========================================
-export const getVisitById = async (id) => {
-  const response = await api.get(`/visits/${id}`);
-  return response.data;
-};
-
-// ==========================================
-// ADMIN - GET ALL VISITS
-// ==========================================
-export const getAllVisits = async () => {
-  const response = await api.get("/visits");
   return response.data;
 };
 
@@ -57,6 +49,14 @@ export const getVisitsByProperty = async (propertyId) => {
 };
 
 // ==========================================
+// BUYER - CREATE VISIT
+// ==========================================
+export const createVisit = async (visitData) => {
+  const response = await api.post("/visits", visitData);
+  return response.data;
+};
+
+// ==========================================
 // ADMIN - UPDATE VISIT STATUS
 // ==========================================
 export const updateVisitStatus = async (id, statusData) => {
@@ -64,6 +64,5 @@ export const updateVisitStatus = async (id, statusData) => {
     `/visits/${id}/status`,
     statusData
   );
-
   return response.data;
 };

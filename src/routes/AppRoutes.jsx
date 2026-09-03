@@ -12,12 +12,15 @@ import MyVisits from "../pages/buyer/MyVisits";
 import Notifications from "../pages/buyer/Notifications";
 
 import LeadsManagement from "../pages/admin/LeadsManagement";
+import VisitsManagement from "../pages/admin/VisitsManagement";
 
 function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+
         {/* Public Routes */}
+
         <Route path="/" element={<Home />} />
 
         <Route
@@ -33,7 +36,9 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
+
         {/* Buyer Routes */}
+
         <Route
           path="/buyer/dashboard"
           element={<BuyerDashboard />}
@@ -59,11 +64,19 @@ function AppRoutes() {
           element={<Notifications />}
         />
 
+
         {/* Admin Routes */}
+
         <Route
           path="/admin/leads"
           element={<LeadsManagement />}
         />
+
+        <Route
+          path="/admin/visits"
+          element={<VisitsManagement />}
+        />
+
       </Routes>
     </BrowserRouter>
   );

@@ -6,6 +6,12 @@ export const getPublishedProperties = async () => {
   return response.data;
 };
 
+// Get all properties for admin
+export const getAllPropertiesForAdmin = async () => {
+  const response = await api.get("/properties/admin/all");
+  return response.data;
+};
+
 // Get property by ID
 export const getPropertyById = async (id) => {
   const response = await api.get(`/properties/${id}`);
@@ -26,25 +32,31 @@ export const createProperty = async (propertyData) => {
 
 // Update seller's own property
 export const updateProperty = async (id, propertyData) => {
-  const response = await api.put(`/properties/${id}`, propertyData);
+  const response = await api.put(
+    `/properties/${id}`,
+    propertyData
+  );
   return response.data;
 };
 
 // Delete seller's own property
 export const deleteProperty = async (id) => {
-  const response = await api.delete(`/properties/${id}`);
-  return response.data;
+  await api.delete(`/properties/${id}`);
 };
 
 // Submit property for admin approval
 export const submitPropertyForApproval = async (id) => {
-  const response = await api.patch(`/properties/${id}/submit`);
+  const response = await api.patch(
+    `/properties/${id}/submit`
+  );
   return response.data;
 };
 
 // Admin approve property
 export const approveProperty = async (id) => {
-  const response = await api.patch(`/properties/${id}/approve`);
+  const response = await api.patch(
+    `/properties/${id}/approve`
+  );
   return response.data;
 };
 
