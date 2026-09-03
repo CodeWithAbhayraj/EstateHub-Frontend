@@ -1,26 +1,32 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
   BedDouble,
-  Building2,
-  CheckCircle2,
+  CalendarDays,
+  Car,
+  CheckCircle,
   Heart,
   Home,
+  IndianRupee,
   MapPin,
-  ParkingSquare,
   Ruler,
+  ShieldCheck,
   X,
 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
 
-import { getPropertyById } from "../../api/propertyApi";
+import {
+  getPropertyById,
+} from "../../api/propertyApi";
+
 import {
   addFavorite,
-  removeFavorite,
   isFavorite,
+  removeFavorite,
 } from "../../api/favoriteApi";
 
 import LeadForm from "../../components/lead/LeadForm";
+import VisitForm from "../../components/visit/VisitForm";
 
 function PropertyDetails() {
   const { id } = useParams();
@@ -32,52 +38,52 @@ function PropertyDetails() {
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [showVisitForm, setShowVisitForm] = useState(false);
 
-  const [error, setError] = useState("");
+  const [leadId, setLeadId] = useState(null);
+
   const [leadSuccess, setLeadSuccess] = useState("");
+  const [visitSuccess, setVisitSuccess] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadProperty();
+    const fetchProperty = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getPropertyById(id);
+        setProperty(data);
+
+        try {
+          const favoriteStatus = await isFavorite(id);
+          setFavorite(Boolean(favoriteStatus));
+        } catch (favoriteError) {
+          console.log("Favorite status unavailable");
+        }
+      } catch (err) {
+        console.error(err);
+        setError(
+          err.response?.data?.message ||
+            "Failed to load property details."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperty();
   }, [id]);
 
-  const loadProperty = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const formatPrice = (price) => {
+    if (!price) return "Price on request";
 
-      const data = await getPropertyById(id);
-      setProperty(data);
-
-      try {
-        const favoriteStatus = await isFavorite(id);
-
-        setFavorite(
-          typeof favoriteStatus === "boolean"
-            ? favoriteStatus
-            : Boolean(favoriteStatus?.isFavorite)
-        );
-      } catch (favoriteError) {
-        console.log(
-          "Favorite status could not be loaded:",
-          favoriteError
-        );
-      }
-    } catch (err) {
-      console.error("Property details error:", err);
-
-      setError(
-        err.response?.data?.message ||
-          "Unable to load property details."
-      );
-    } finally {
-      setLoading(false);
-    }
+    return `₹${Number(price).toLocaleString("en-IN")}`;
   };
 
   const handleFavorite = async () => {
     try {
       setFavoriteLoading(true);
-      setError("");
 
       if (favorite) {
         await removeFavorite(id);
@@ -87,7 +93,7 @@ function PropertyDetails() {
         setFavorite(true);
       }
     } catch (err) {
-      console.error("Favorite error:", err);
+      console.error(err);
 
       setError(
         err.response?.data?.message ||
@@ -98,23 +104,58 @@ function PropertyDetails() {
     }
   };
 
-  const handleLeadSuccess = () => {
+  const handleLeadSuccess = (response) => {
+    /*
+      Backend LeadResponse is expected to return the created lead.
+      We keep the returned ID because Visit API requires leadId.
+    */
+    const createdLeadId =
+      response?.id ??
+      response?.leadId ??
+      response?.data?.id ??
+      response?.data?.leadId;
+
+    if (createdLeadId) {
+      setLeadId(createdLeadId);
+    }
+
     setLeadSuccess(
-      "Your enquiry has been submitted successfully."
+      response?.message ||
+        "Your enquiry has been submitted successfully."
     );
 
     setShowLeadForm(false);
   };
 
+  const handleVisitSuccess = (response) => {
+    setVisitSuccess(
+      response?.message ||
+        "Your property visit has been scheduled successfully."
+    );
+
+    setShowVisitForm(false);
+  };
+
+  const openVisitForm = () => {
+    setVisitSuccess("");
+    setError("");
+
+    if (!leadId) {
+      setError(
+        "Please submit an enquiry first, then schedule a visit."
+      );
+      setShowLeadForm(true);
+      return;
+    }
+
+    setShowVisitForm(true);
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
-
-          <p className="mt-4 text-sm text-slate-500">
-            Loading property...
-          </p>
+        <div className="text-lg font-medium text-slate-600">
+          Loading property...
         </div>
       </div>
     );
@@ -122,404 +163,430 @@ function PropertyDetails() {
 
   if (error && !property) {
     return (
-      <div className="min-h-screen bg-slate-50 px-6 py-12">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-          <h1 className="text-2xl font-bold text-red-700">
-            Property Not Found
-          </h1>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="rounded-2xl bg-white p-8 text-center shadow-md">
+          <p className="mb-4 text-red-600">{error}</p>
 
-          <p className="mt-2 text-red-600">{error}</p>
-
-          <Link
-            to="/properties"
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
+          <button
+            onClick={() => window.history.back()}
+            className="rounded-xl bg-slate-900 px-5 py-3 text-white"
           >
-            <ArrowLeft size={18} />
-            Back to Properties
-          </Link>
+            Go Back
+          </button>
         </div>
       </div>
     );
   }
 
-  const images = Array.isArray(property?.images)
-    ? property.images
-    : [];
+  if (!property) return null;
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="border-b bg-white">
-        <div className="mx-auto max-w-7xl px-6 py-4">
-          <Link
-            to="/properties"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600"
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+          <button
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900"
           >
             <ArrowLeft size={18} />
             Back to Properties
-          </Link>
+          </button>
         </div>
       </div>
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Success Messages */}
+        {leadSuccess && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-700">
+            <CheckCircle size={20} />
+            <span>{leadSuccess}</span>
+          </div>
+        )}
+
+        {visitSuccess && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-700">
+            <CalendarDays size={20} />
+            <span>{visitSuccess}</span>
+          </div>
+        )}
+
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
             {error}
           </div>
         )}
 
-        {leadSuccess && (
-          <div className="mb-6 flex items-center justify-between rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            <span>{leadSuccess}</span>
-
-            <button
-              type="button"
-              onClick={() => setLeadSuccess("")}
-              className="font-bold text-green-700"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        )}
-
-        {/* Gallery */}
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-slate-100">
-            {images.length > 0 ? (
+        {/* Property Gallery */}
+        <div className="mb-8 overflow-hidden rounded-3xl bg-white shadow-sm">
+          <div className="relative h-[420px] bg-slate-100">
+            {property.images?.length > 0 ? (
               <img
-                src={images[0]}
-                alt={property?.title || "Property"}
-                className="h-[420px] w-full object-cover"
+                src={property.images[0]}
+                alt={property.title}
+                className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-[420px] items-center justify-center">
-                <div className="text-center">
-                  <Building2
-                    size={60}
-                    className="mx-auto text-slate-300"
+              <div className="flex h-full items-center justify-center">
+                <div className="text-center text-slate-400">
+                  <Home
+                    size={48}
+                    className="mx-auto mb-3"
                   />
-
-                  <p className="mt-3 text-slate-400">
-                    No images available
-                  </p>
+                  <p>No Image Available</p>
                 </div>
               </div>
             )}
+
+            {/* Favorite */}
+            <button
+              onClick={handleFavorite}
+              disabled={favoriteLoading}
+              className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg transition hover:scale-105 disabled:opacity-50"
+            >
+              <Heart
+                size={22}
+                className={
+                  favorite
+                    ? "fill-red-500 text-red-500"
+                    : "text-slate-700"
+                }
+              />
+            </button>
+
+            {/* Status */}
+            {property.status && (
+              <span className="absolute left-5 top-5 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                {property.status}
+              </span>
+            )}
           </div>
 
-          {images.length > 1 && (
-            <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-              {images.slice(1, 5).map((image, index) => (
+          {/* Additional Images */}
+          {property.images?.length > 1 && (
+            <div className="grid grid-cols-4 gap-3 p-4">
+              {property.images.slice(1, 5).map((image, index) => (
                 <img
                   key={index}
                   src={image}
-                  alt={`Property ${index + 2}`}
-                  className="h-24 w-full rounded-lg object-cover"
+                  alt={`${property.title} ${index + 2}`}
+                  className="h-24 w-full rounded-xl object-cover"
                 />
               ))}
             </div>
           )}
-        </section>
+        </div>
 
-        {/* Main Content */}
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_350px]">
-          {/* Left */}
-          <section className="space-y-6">
-            {/* Basic Info */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {property?.status && (
-                      <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-600">
-                        {property.status}
-                      </span>
-                    )}
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Title */}
+            <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+              <div className="mb-6">
+                <h1 className="text-3xl font-bold text-slate-900">
+                  {property.title || "Untitled Property"}
+                </h1>
 
-                    {property?.newProject && (
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
-                        New Project
-                      </span>
-                    )}
+                <div className="mt-3 flex items-center gap-2 text-slate-500">
+                  <MapPin size={18} />
+                  <span>
+                    {property.areaName || "Unknown Area"},{" "}
+                    {property.city || "Unknown City"}
+                  </span>
+                </div>
+              </div>
 
-                    {property?.resale && (
-                      <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600">
-                        Resale
-                      </span>
-                    )}
+              {/* Price */}
+              <div className="mb-8 flex items-center gap-2">
+                <IndianRupee
+                  size={26}
+                  className="text-green-600"
+                />
+
+                <span className="text-3xl font-bold text-slate-900">
+                  {formatPrice(property.price)}
+                </span>
+              </div>
+
+              {/* Main Features */}
+              <div className="grid gap-4 border-y border-slate-200 py-6 sm:grid-cols-4">
+                {property.bhk && (
+                  <div className="flex items-center gap-3">
+                    <BedDouble
+                      size={22}
+                      className="text-blue-600"
+                    />
+
+                    <div>
+                      <p className="text-xs text-slate-400">
+                        BHK
+                      </p>
+                      <p className="font-semibold">
+                        {property.bhk}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {property.area && (
+                  <div className="flex items-center gap-3">
+                    <Ruler
+                      size={22}
+                      className="text-blue-600"
+                    />
+
+                    <div>
+                      <p className="text-xs text-slate-400">
+                        Area
+                      </p>
+                      <p className="font-semibold">
+                        {property.area} sq.ft
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {property.propertyType && (
+                  <div className="flex items-center gap-3">
+                    <Home
+                      size={22}
+                      className="text-blue-600"
+                    />
+
+                    <div>
+                      <p className="text-xs text-slate-400">
+                        Property Type
+                      </p>
+                      <p className="font-semibold">
+                        {property.propertyType}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Car
+                    size={22}
+                    className="text-blue-600"
+                  />
+
+                  <div>
+                    <p className="text-xs text-slate-400">
+                      Parking
+                    </p>
+
+                    <p className="font-semibold">
+                      {property.parking
+                        ? "Available"
+                        : "No"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="mt-8">
+                <h2 className="mb-4 text-xl font-bold text-slate-900">
+                  Description
+                </h2>
+
+                <p className="leading-7 text-slate-600">
+                  {property.description ||
+                    "No description available for this property."}
+                </p>
+              </div>
+
+              {/* Property Details */}
+              <div className="mt-8">
+                <h2 className="mb-4 text-xl font-bold text-slate-900">
+                  Property Details
+                </h2>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-400">
+                      Furnished
+                    </p>
+
+                    <p className="mt-1 font-semibold">
+                      {property.furnished || "Not specified"}
+                    </p>
                   </div>
 
-                  <h1 className="mt-3 text-3xl font-bold text-slate-900">
-                    {property?.title || "Untitled Property"}
-                  </h1>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-400">
+                      Facing
+                    </p>
 
-                  <div className="mt-3 flex items-center gap-2 text-slate-500">
-                    <MapPin size={18} />
-
-                    <span>
-                      {property?.areaName || "Unknown Area"},{" "}
-                      {property?.city || "Unknown City"}
-                    </span>
+                    <p className="mt-1 font-semibold">
+                      {property.facing || "Not specified"}
+                    </p>
                   </div>
 
-                  <p className="mt-4 text-3xl font-bold text-blue-600">
-                    ₹
-                    {Number(
-                      property?.price || 0
-                    ).toLocaleString("en-IN")}
-                  </p>
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-400">
+                      Ready To Move
+                    </p>
+
+                    <p className="mt-1 font-semibold">
+                      {property.readyToMove
+                        ? "Yes"
+                        : "No"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-400">
+                      New Project
+                    </p>
+
+                    <p className="mt-1 font-semibold">
+                      {property.newProject
+                        ? "Yes"
+                        : "No"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-400">
+                      Resale
+                    </p>
+
+                    <p className="mt-1 font-semibold">
+                      {property.resale ? "Yes" : "No"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div>
+            <div className="sticky top-6 rounded-3xl bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+                  <ShieldCheck
+                    size={24}
+                    className="text-blue-600"
+                  />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleFavorite}
-                  disabled={favoriteLoading}
-                  className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:bg-slate-50 disabled:opacity-50"
-                >
-                  <Heart
-                    size={23}
-                    className={
-                      favorite
-                        ? "fill-red-500 text-red-500"
-                        : "text-slate-600"
-                    }
-                  />
-                </button>
+                <div>
+                  <h3 className="font-bold text-slate-900">
+                    Interested in this property?
+                  </h3>
+
+                  <p className="text-sm text-slate-500">
+                    Contact our agent
+                  </p>
+                </div>
               </div>
-            </div>
-
-            {/* Property Details */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">
-                Property Details
-              </h2>
-
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <DetailItem
-                  icon={BedDouble}
-                  label="Bedrooms"
-                  value={
-                    property?.bhk
-                      ? `${property.bhk} BHK`
-                      : "Not specified"
-                  }
-                />
-
-                <DetailItem
-                  icon={Ruler}
-                  label="Area"
-                  value={
-                    property?.area
-                      ? `${property.area} sq.ft`
-                      : "Not specified"
-                  }
-                />
-
-                <DetailItem
-                  icon={Home}
-                  label="Property Type"
-                  value={
-                    property?.propertyType ||
-                    "Not specified"
-                  }
-                />
-
-                <DetailItem
-                  icon={MapPin}
-                  label="City"
-                  value={
-                    property?.city ||
-                    "Not specified"
-                  }
-                />
-
-                <DetailItem
-                  icon={MapPin}
-                  label="Area"
-                  value={
-                    property?.areaName ||
-                    "Not specified"
-                  }
-                />
-
-                <DetailItem
-                  icon={ParkingSquare}
-                  label="Parking"
-                  value={
-                    property?.parking
-                      ? "Available"
-                      : "Not Available"
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Features */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">
-                Features
-              </h2>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <Feature
-                  label="Furnished"
-                  value={property?.furnished}
-                />
-
-                <Feature
-                  label="Ready to Move"
-                  value={property?.readyToMove}
-                />
-
-                <Feature
-                  label="New Project"
-                  value={property?.newProject}
-                />
-
-                <Feature
-                  label="Resale"
-                  value={property?.resale}
-                />
-
-                <Feature
-                  label="Facing"
-                  value={
-                    property?.facing || "Not specified"
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">
-                Description
-              </h2>
-
-              <p className="mt-4 whitespace-pre-line leading-7 text-slate-600">
-                {property?.description ||
-                  "No description available for this property."}
-              </p>
-            </div>
-          </section>
-
-          {/* Right */}
-          <aside>
-            <div className="sticky top-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900">
-                Interested in this property?
-              </h2>
-
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Send an enquiry to EstateHub and our admin
-                team will get in touch with you.
-              </p>
 
               {/* Contact Agent */}
               <button
-                type="button"
                 onClick={() => {
                   setLeadSuccess("");
+                  setError("");
                   setShowLeadForm(true);
                 }}
-                className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700"
+                className="mb-3 w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
               >
                 Contact Agent
               </button>
 
               {/* Schedule Visit */}
               <button
-                type="button"
-                className="mt-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 font-semibold text-blue-600 hover:bg-blue-100"
+                onClick={openVisitForm}
+                className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 transition hover:bg-slate-50"
               >
                 Schedule Visit
               </button>
 
-              <div className="mt-6 border-t border-slate-100 pt-5">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2
-                    size={20}
-                    className="mt-0.5 text-green-500"
-                  />
+              {/* Lead status */}
+              {leadId && (
+                <div className="mt-5 rounded-xl bg-green-50 p-4">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle size={18} />
 
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      Verified Listing
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      This property is published on EstateHub.
-                    </p>
+                    <span className="text-sm font-medium">
+                      Enquiry submitted
+                    </span>
                   </div>
+
+                  <p className="mt-1 text-xs text-green-600">
+                    You can now schedule a property visit.
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
-          </aside>
+          </div>
         </div>
-      </main>
+      </div>
 
       {/* Lead Modal */}
       {showLeadForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
             <button
-              type="button"
               onClick={() => setShowLeadForm(false)}
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
-            <LeadForm
-              propertyId={id}
-              onSuccess={handleLeadSuccess}
-              onClose={() => setShowLeadForm(false)}
-            />
+            <div className="pr-10">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Contact Agent
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Send your enquiry for this property.
+              </p>
+            </div>
+
+            <div className="mt-6">
+              <LeadForm
+                propertyId={id}
+                onSuccess={handleLeadSuccess}
+                onClose={() => setShowLeadForm(false)}
+              />
+            </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function DetailItem({ icon: Icon, label, value }) {
-  return (
-    <div className="rounded-xl bg-slate-50 p-4">
-      <div className="flex items-center gap-2 text-slate-500">
-        <Icon size={17} />
-        <span className="text-sm">{label}</span>
-      </div>
+      {/* Visit Modal */}
+      {showVisitForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <button
+              onClick={() => setShowVisitForm(false)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+            >
+              <X size={18} />
+            </button>
 
-      <p className="mt-2 font-semibold text-slate-900">
-        {value}
-      </p>
-    </div>
-  );
-}
+            <div className="pr-10">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Schedule Property Visit
+              </h2>
 
-function Feature({ label, value }) {
-  const isBoolean = typeof value === "boolean";
+              <p className="mt-1 text-sm text-slate-500">
+                Choose your preferred date and time.
+              </p>
+            </div>
 
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-100 p-4">
-      <span className="text-sm font-medium text-slate-600">
-        {label}
-      </span>
-
-      {isBoolean ? (
-        <span
-          className={
-            value
-              ? "font-semibold text-green-600"
-              : "font-semibold text-slate-400"
-          }
-        >
-          {value ? "Yes" : "No"}
-        </span>
-      ) : (
-        <span className="font-semibold text-slate-900">
-          {value}
-        </span>
+            <div className="mt-6">
+              <VisitForm
+                propertyId={id}
+                leadId={leadId}
+                onSuccess={handleVisitSuccess}
+                onClose={() => setShowVisitForm(false)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
