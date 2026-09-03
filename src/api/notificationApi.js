@@ -1,0 +1,41 @@
+import api from "./axios";
+
+// ==========================================
+// GET MY NOTIFICATIONS
+// ==========================================
+export const getMyNotifications = async () => {
+  const response = await api.get("/notifications");
+  return response.data;
+};
+
+// ==========================================
+// GET MY UNREAD NOTIFICATIONS
+// ==========================================
+export const getUnreadNotifications = async () => {
+  const response = await api.get("/notifications/unread");
+  return response.data;
+};
+
+// ==========================================
+// GET UNREAD NOTIFICATION COUNT
+// ==========================================
+export const getUnreadNotificationCount = async () => {
+  const response = await api.get("/notifications/unread/count");
+  return response.data;
+};
+
+// ==========================================
+// MARK ONE NOTIFICATION AS READ
+// ==========================================
+export const markNotificationAsRead = async (id) => {
+  const response = await api.patch(`/notifications/${id}/read`);
+  return response.data;
+};
+
+// ==========================================
+// MARK ALL NOTIFICATIONS AS READ
+// ==========================================
+export const markAllNotificationsAsRead = async () => {
+  const response = await api.patch("/notifications/read-all");
+  return response.data;
+};
