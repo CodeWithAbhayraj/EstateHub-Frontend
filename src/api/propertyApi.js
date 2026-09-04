@@ -73,4 +73,5 @@ export const rejectProperty = async (id, reason) => {
   );
 
   return response.data;
+  
 };
