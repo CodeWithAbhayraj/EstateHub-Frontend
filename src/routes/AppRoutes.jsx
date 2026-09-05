@@ -13,6 +13,7 @@ import Notifications from "../pages/buyer/Notifications";
 
 import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
+import CommissionManagement from "../pages/admin/CommissionManagement";
 
 function AppRoutes() {
   return (
@@ -77,10 +78,14 @@ function AppRoutes() {
           element={<VisitsManagement />}
         />
 
+        <Route
+          path="/admin/commissions"
+          element={<CommissionManagement />}
+        />
+
       </Routes>
     </BrowserRouter>
   );
 }
-
 
 export default AppRoutes;
