@@ -12,6 +12,7 @@ import MyVisits from "../pages/buyer/MyVisits";
 import Notifications from "../pages/buyer/Notifications";
 
 import SellerDashboard from "../pages/seller/SellerDashboard";
+import AddProperty from "../pages/seller/AddProperty";
 
 import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
@@ -129,6 +130,11 @@ function AppRoutes() {
             <Route
               path="/seller/dashboard"
               element={<SellerDashboard />}
+            />
+
+            <Route
+              path="/seller/properties/add"
+              element={<AddProperty />}
             />
 
           </Route>
