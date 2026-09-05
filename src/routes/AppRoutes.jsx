@@ -13,6 +13,8 @@ import Notifications from "../pages/buyer/Notifications";
 
 import SellerDashboard from "../pages/seller/SellerDashboard";
 import AddProperty from "../pages/seller/AddProperty";
+import MyProperties from "../pages/seller/MyProperties";
+import EditProperty from "../pages/seller/EditProperty";
 
 import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
@@ -22,6 +24,8 @@ import LocationsManagement from "../pages/admin/LocationsManagement";
 
 import ProtectedRoute from "./ProtectedRoute";
 import RoleRoute from "./RoleRoute";
+
+import DashboardLayout from "../components/layout/DashboardLayout";
 
 function Unauthorized() {
   return (
@@ -48,7 +52,10 @@ function AppRoutes() {
             PUBLIC ROUTES
         ========================================== */}
 
-        <Route path="/" element={<Home />} />
+        <Route
+          path="/"
+          element={<Home />}
+        />
 
         <Route
           path="/properties"
@@ -83,34 +90,40 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route
             element={
-              <RoleRoute allowedRoles={["BUYER"]} />
+              <RoleRoute
+                allowedRoles={["BUYER"]}
+              />
             }
           >
 
-            <Route
-              path="/buyer/dashboard"
-              element={<BuyerDashboard />}
-            />
+            <Route element={<DashboardLayout />}>
 
-            <Route
-              path="/buyer/properties"
-              element={<BrowseProperties />}
-            />
+              <Route
+                path="/buyer/dashboard"
+                element={<BuyerDashboard />}
+              />
 
-            <Route
-              path="/buyer/favorites"
-              element={<Favorites />}
-            />
+              <Route
+                path="/buyer/properties"
+                element={<BrowseProperties />}
+              />
 
-            <Route
-              path="/buyer/visits"
-              element={<MyVisits />}
-            />
+              <Route
+                path="/buyer/favorites"
+                element={<Favorites />}
+              />
 
-            <Route
-              path="/buyer/notifications"
-              element={<Notifications />}
-            />
+              <Route
+                path="/buyer/visits"
+                element={<MyVisits />}
+              />
+
+              <Route
+                path="/buyer/notifications"
+                element={<Notifications />}
+              />
+
+            </Route>
 
           </Route>
         </Route>
@@ -123,19 +136,35 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route
             element={
-              <RoleRoute allowedRoles={["SELLER"]} />
+              <RoleRoute
+                allowedRoles={["SELLER"]}
+              />
             }
           >
 
-            <Route
-              path="/seller/dashboard"
-              element={<SellerDashboard />}
-            />
+            <Route element={<DashboardLayout />}>
 
-            <Route
-              path="/seller/properties/add"
-              element={<AddProperty />}
-            />
+              <Route
+                path="/seller/dashboard"
+                element={<SellerDashboard />}
+              />
+
+              <Route
+                path="/seller/properties"
+                element={<MyProperties />}
+              />
+
+              <Route
+                path="/seller/properties/add"
+                element={<AddProperty />}
+              />
+
+              <Route
+                path="/seller/properties/:id/edit"
+                element={<EditProperty />}
+              />
+
+            </Route>
 
           </Route>
         </Route>
@@ -149,35 +178,42 @@ function AppRoutes() {
           <Route
             element={
               <RoleRoute
-                allowedRoles={["ADMIN", "SUPER_ADMIN"]}
+                allowedRoles={[
+                  "ADMIN",
+                  "SUPER_ADMIN",
+                ]}
               />
             }
           >
 
-            <Route
-              path="/admin/leads"
-              element={<LeadsManagement />}
-            />
+            <Route element={<DashboardLayout />}>
 
-            <Route
-              path="/admin/visits"
-              element={<VisitsManagement />}
-            />
+              <Route
+                path="/admin/leads"
+                element={<LeadsManagement />}
+              />
 
-            <Route
-              path="/admin/commissions"
-              element={<CommissionManagement />}
-            />
+              <Route
+                path="/admin/visits"
+                element={<VisitsManagement />}
+              />
 
-            <Route
-              path="/admin/users"
-              element={<UsersManagement />}
-            />
+              <Route
+                path="/admin/commissions"
+                element={<CommissionManagement />}
+              />
 
-            <Route
-              path="/admin/locations"
-              element={<LocationsManagement />}
-            />
+              <Route
+                path="/admin/users"
+                element={<UsersManagement />}
+              />
+
+              <Route
+                path="/admin/locations"
+                element={<LocationsManagement />}
+              />
+
+            </Route>
 
           </Route>
         </Route>
