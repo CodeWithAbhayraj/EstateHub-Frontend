@@ -11,18 +11,41 @@ import Favorites from "../pages/buyer/Favorites";
 import MyVisits from "../pages/buyer/MyVisits";
 import Notifications from "../pages/buyer/Notifications";
 
+import SellerDashboard from "../pages/seller/SellerDashboard";
+
 import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
 import CommissionManagement from "../pages/admin/CommissionManagement";
 import UsersManagement from "../pages/admin/UsersManagement";
 import LocationsManagement from "../pages/admin/LocationsManagement";
 
+import ProtectedRoute from "./ProtectedRoute";
+import RoleRoute from "./RoleRoute";
+
+function Unauthorized() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-slate-900">
+          403
+        </h1>
+
+        <p className="mt-2 text-slate-500">
+          You are not authorized to access this page.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* Public Routes */}
+        {/* ==========================================
+            PUBLIC ROUTES
+        ========================================== */}
 
         <Route path="/" element={<Home />} />
 
@@ -36,64 +59,122 @@ function AppRoutes() {
           element={<PropertyDetails />}
         />
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-
-
-        {/* Buyer Routes */}
-
         <Route
-          path="/buyer/dashboard"
-          element={<BuyerDashboard />}
+          path="/login"
+          element={<Login />}
         />
 
         <Route
-          path="/buyer/properties"
-          element={<BrowseProperties />}
+          path="/register"
+          element={<Register />}
         />
 
         <Route
-          path="/buyer/favorites"
-          element={<Favorites />}
-        />
-
-        <Route
-          path="/buyer/visits"
-          element={<MyVisits />}
-        />
-
-        <Route
-          path="/buyer/notifications"
-          element={<Notifications />}
+          path="/unauthorized"
+          element={<Unauthorized />}
         />
 
 
-        {/* Admin Routes */}
+        {/* ==========================================
+            BUYER ROUTES
+        ========================================== */}
 
-        <Route
-          path="/admin/leads"
-          element={<LeadsManagement />}
-        />
+        <Route element={<ProtectedRoute />}>
+          <Route
+            element={
+              <RoleRoute allowedRoles={["BUYER"]} />
+            }
+          >
 
-        <Route
-          path="/admin/visits"
-          element={<VisitsManagement />}
-        />
+            <Route
+              path="/buyer/dashboard"
+              element={<BuyerDashboard />}
+            />
 
-        <Route
-          path="/admin/commissions"
-          element={<CommissionManagement />}
-        />
+            <Route
+              path="/buyer/properties"
+              element={<BrowseProperties />}
+            />
 
-        <Route
-          path="/admin/users"
-          element={<UsersManagement />}
-        />
+            <Route
+              path="/buyer/favorites"
+              element={<Favorites />}
+            />
 
-        <Route
-          path="/admin/locations"
-          element={<LocationsManagement />}
-        />
+            <Route
+              path="/buyer/visits"
+              element={<MyVisits />}
+            />
+
+            <Route
+              path="/buyer/notifications"
+              element={<Notifications />}
+            />
+
+          </Route>
+        </Route>
+
+
+        {/* ==========================================
+            SELLER ROUTES
+        ========================================== */}
+
+        <Route element={<ProtectedRoute />}>
+          <Route
+            element={
+              <RoleRoute allowedRoles={["SELLER"]} />
+            }
+          >
+
+            <Route
+              path="/seller/dashboard"
+              element={<SellerDashboard />}
+            />
+
+          </Route>
+        </Route>
+
+
+        {/* ==========================================
+            ADMIN ROUTES
+        ========================================== */}
+
+        <Route element={<ProtectedRoute />}>
+          <Route
+            element={
+              <RoleRoute
+                allowedRoles={["ADMIN", "SUPER_ADMIN"]}
+              />
+            }
+          >
+
+            <Route
+              path="/admin/leads"
+              element={<LeadsManagement />}
+            />
+
+            <Route
+              path="/admin/visits"
+              element={<VisitsManagement />}
+            />
+
+            <Route
+              path="/admin/commissions"
+              element={<CommissionManagement />}
+            />
+
+            <Route
+              path="/admin/users"
+              element={<UsersManagement />}
+            />
+
+            <Route
+              path="/admin/locations"
+              element={<LocationsManagement />}
+            />
+
+          </Route>
+        </Route>
 
       </Routes>
     </BrowserRouter>
