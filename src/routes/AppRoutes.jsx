@@ -14,6 +14,7 @@ import Notifications from "../pages/buyer/Notifications";
 import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
 import CommissionManagement from "../pages/admin/CommissionManagement";
+import UsersManagement from "../pages/admin/UsersManagement";
 
 function AppRoutes() {
   return (
@@ -81,6 +82,11 @@ function AppRoutes() {
         <Route
           path="/admin/commissions"
           element={<CommissionManagement />}
+        />
+
+        <Route
+          path="/admin/users"
+          element={<UsersManagement />}
         />
 
       </Routes>
