@@ -6,15 +6,15 @@ import {
   Save,
 } from "lucide-react";
 
-import {
-  createProperty,
-} from "../../api/propertyApi";
+import { createProperty } from "../../api/propertyApi";
 
 import {
   getAllCities,
   getAreasByCity,
   getPropertyTypesByArea,
 } from "../../api/locationAdminApi";
+
+import PropertyImageUpload from "./PropertyImageUpload";
 
 function AddProperty() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ function AddProperty() {
     useState(false);
 
   // ==========================================
-  // FORM STATES
+  // FORM STATE
   // ==========================================
 
   const [formData, setFormData] = useState({
@@ -54,6 +54,20 @@ function AddProperty() {
     description: "",
   });
 
+  // ==========================================
+  // CREATED PROPERTY
+  // ==========================================
+
+  const [createdPropertyId, setCreatedPropertyId] =
+    useState(null);
+
+  const [createdProperty, setCreatedProperty] =
+    useState(null);
+
+  // ==========================================
+  // COMMON STATE
+  // ==========================================
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -66,6 +80,7 @@ function AddProperty() {
     const loadCities = async () => {
       try {
         setLoadingCities(true);
+        setError("");
 
         const data = await getAllCities();
 
@@ -105,9 +120,7 @@ function AddProperty() {
         setLoadingAreas(true);
         setError("");
 
-        const data = await getAreasByCity(
-          cityId
-        );
+        const data = await getAreasByCity(cityId);
 
         setAreas(
           Array.isArray(data) ? data : []
@@ -123,6 +136,11 @@ function AddProperty() {
           err.response?.data?.message ||
             "Failed to load areas."
         );
+
+        setAreas([]);
+        setAreaId("");
+        setPropertyTypes([]);
+        setPropertyTypeId("");
       } finally {
         setLoadingAreas(false);
       }
@@ -148,9 +166,7 @@ function AddProperty() {
         setError("");
 
         const data =
-          await getPropertyTypesByArea(
-            areaId
-          );
+          await getPropertyTypesByArea(areaId);
 
         setPropertyTypes(
           Array.isArray(data) ? data : []
@@ -167,6 +183,9 @@ function AddProperty() {
           err.response?.data?.message ||
             "Failed to load property types."
         );
+
+        setPropertyTypes([]);
+        setPropertyTypeId("");
       } finally {
         setLoadingPropertyTypes(false);
       }
@@ -180,8 +199,12 @@ function AddProperty() {
   // ==========================================
 
   const handleChange = (e) => {
-    const { name, value, type, checked } =
-      e.target;
+    const {
+      name,
+      value,
+      type,
+      checked,
+    } = e.target;
 
     setFormData((prev) => ({
       ...prev,
@@ -202,7 +225,10 @@ function AddProperty() {
     setError("");
     setSuccess("");
 
-    // Basic validation
+    // ------------------------------
+    // VALIDATION
+    // ------------------------------
+
     if (!cityId) {
       setError("Please select a city.");
       return;
@@ -221,17 +247,37 @@ function AddProperty() {
     }
 
     if (!formData.title.trim()) {
-      setError("Please enter property title.");
+      setError(
+        "Please enter property title."
+      );
       return;
     }
 
     if (!formData.price) {
-      setError("Please enter property price.");
+      setError(
+        "Please enter property price."
+      );
+      return;
+    }
+
+    if (Number(formData.price) <= 0) {
+      setError(
+        "Property price must be greater than 0."
+      );
       return;
     }
 
     if (!formData.area) {
-      setError("Please enter property area.");
+      setError(
+        "Please enter property area."
+      );
+      return;
+    }
+
+    if (Number(formData.area) <= 0) {
+      setError(
+        "Property area must be greater than 0."
+      );
       return;
     }
 
@@ -256,11 +302,13 @@ function AddProperty() {
         propertyTypeId:
           Number(propertyTypeId),
 
-        furnished: formData.furnished,
+        furnished:
+          formData.furnished || null,
 
         parking: formData.parking,
 
-        facing: formData.facing.trim(),
+        facing:
+          formData.facing.trim() || null,
 
         readyToMove:
           formData.readyToMove,
@@ -272,28 +320,23 @@ function AddProperty() {
           formData.resale,
 
         description:
-          formData.description.trim(),
+          formData.description.trim() || null,
       };
 
-      const createdProperty =
+      const response =
         await createProperty(propertyData);
 
-      setSuccess(
-        "Property created successfully."
+      // Save created property
+      setCreatedProperty(response);
+
+      setCreatedPropertyId(
+        response?.id
       );
 
-      // Redirect to property details
-      if (createdProperty?.id) {
-        setTimeout(() => {
-          navigate(
-            `/properties/${createdProperty.id}`
-          );
-        }, 700);
-      } else {
-        setTimeout(() => {
-          navigate("/seller/dashboard");
-        }, 700);
-      }
+      setSuccess(
+        "Property created successfully. You can now upload images."
+      );
+
     } catch (err) {
       console.error(
         "Create property error:",
@@ -309,8 +352,149 @@ function AddProperty() {
     }
   };
 
+  // ==========================================
+  // SUCCESS SCREEN AFTER PROPERTY CREATION
+  // ==========================================
+
+  if (createdPropertyId) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+
+          {/* HEADER */}
+
+          <div className="mb-8 flex items-center gap-4">
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/seller/dashboard")
+              }
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100"
+            >
+              <ArrowLeft size={18} />
+            </button>
+
+            <div>
+
+              <p className="text-sm font-medium text-slate-500">
+                EstateHub Seller
+              </p>
+
+              <h1 className="mt-1 text-3xl font-bold text-slate-900">
+                Property Created
+              </h1>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Your property has been saved as a draft.
+              </p>
+
+            </div>
+
+          </div>
+
+          {/* SUCCESS */}
+
+          <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-5">
+
+            <h2 className="font-bold text-green-800">
+              Property created successfully
+            </h2>
+
+            <p className="mt-2 text-sm text-green-700">
+              Property ID: #{createdPropertyId}
+            </p>
+
+            <p className="mt-1 text-sm text-green-700">
+              Status: {createdProperty?.status || "DRAFT"}
+            </p>
+
+          </div>
+
+          {/* PROPERTY SUMMARY */}
+
+          {createdProperty && (
+            <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+                <div>
+
+                  <h2 className="text-xl font-bold text-slate-900">
+                    {createdProperty.title ||
+                      "Untitled Property"}
+                  </h2>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    {createdProperty.areaName ||
+                      "—"}
+                    ,{" "}
+                    {createdProperty.city ||
+                      "—"}
+                  </p>
+
+                </div>
+
+                <span className="w-fit rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+                  {createdProperty.status ||
+                    "DRAFT"}
+                </span>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* ==========================================
+              IMAGE UPLOAD
+          ========================================== */}
+
+          <PropertyImageUpload
+            propertyId={createdPropertyId}
+          />
+
+          {/* ==========================================
+              ACTIONS
+          ========================================== */}
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/seller/dashboard")
+              }
+              className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Go to Dashboard
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  `/properties/${createdPropertyId}`
+                )
+              }
+              className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              View Property
+            </button>
+
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // ADD PROPERTY FORM
+  // ==========================================
+
   return (
     <div className="min-h-screen bg-slate-50">
+
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
 
         {/* ==========================================
@@ -320,6 +504,7 @@ function AddProperty() {
         <div className="mb-8 flex items-center gap-4">
 
           <button
+            type="button"
             onClick={() =>
               navigate("/seller/dashboard")
             }
@@ -339,7 +524,7 @@ function AddProperty() {
             </h1>
 
             <p className="mt-2 text-sm text-slate-500">
-              Add your property details and submit it for approval.
+              Add your property details.
             </p>
 
           </div>
@@ -357,14 +542,8 @@ function AddProperty() {
         )}
 
         {/* ==========================================
-            SUCCESS
+            FORM
         ========================================== */}
-
-        {success && (
-          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {success}
-          </div>
-        )}
 
         <form
           onSubmit={handleSubmit}
@@ -418,6 +597,7 @@ function AddProperty() {
                   disabled={loadingCities}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 disabled:bg-slate-100"
                 >
+
                   <option value="">
                     {loadingCities
                       ? "Loading cities..."
@@ -432,6 +612,7 @@ function AddProperty() {
                       {city.name}
                     </option>
                   ))}
+
                 </select>
 
               </div>
@@ -455,6 +636,7 @@ function AddProperty() {
                   }
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 disabled:bg-slate-100"
                 >
+
                   <option value="">
                     {!cityId
                       ? "Select city first"
@@ -471,6 +653,7 @@ function AddProperty() {
                       {area.name}
                     </option>
                   ))}
+
                 </select>
 
               </div>
@@ -496,6 +679,7 @@ function AddProperty() {
                   }
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 disabled:bg-slate-100"
                 >
+
                   <option value="">
                     {!areaId
                       ? "Select area first"
@@ -514,6 +698,7 @@ function AddProperty() {
                       </option>
                     )
                   )}
+
                 </select>
 
               </div>
@@ -567,7 +752,7 @@ function AddProperty() {
                   value={formData.price}
                   onChange={handleChange}
                   placeholder="e.g. 7500000"
-                  min="0"
+                  min="1"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
                 />
 
@@ -587,7 +772,7 @@ function AddProperty() {
                   value={formData.area}
                   onChange={handleChange}
                   placeholder="e.g. 1200"
-                  min="0"
+                  min="1"
                   step="0.01"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
                 />
@@ -628,6 +813,7 @@ function AddProperty() {
                   onChange={handleChange}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
                 >
+
                   <option value="">
                     Select
                   </option>
@@ -643,6 +829,7 @@ function AddProperty() {
                   <option value="Unfurnished">
                     Unfurnished
                   </option>
+
                 </select>
 
               </div>
@@ -661,6 +848,7 @@ function AddProperty() {
                   onChange={handleChange}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
                 >
+
                   <option value="">
                     Select Facing
                   </option>
@@ -696,6 +884,7 @@ function AddProperty() {
                   <option value="South-West">
                     South-West
                   </option>
+
                 </select>
 
               </div>
@@ -716,8 +905,6 @@ function AddProperty() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
-              {/* PARKING */}
-
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
 
                 <input
@@ -733,8 +920,6 @@ function AddProperty() {
                 </span>
 
               </label>
-
-              {/* READY TO MOVE */}
 
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
 
@@ -754,8 +939,6 @@ function AddProperty() {
 
               </label>
 
-              {/* NEW PROJECT */}
-
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
 
                 <input
@@ -773,8 +956,6 @@ function AddProperty() {
                 </span>
 
               </label>
-
-              {/* RESALE */}
 
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
 
@@ -818,7 +999,7 @@ function AddProperty() {
           </div>
 
           {/* ==========================================
-              SUBMIT
+              ACTIONS
           ========================================== */}
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -836,13 +1017,15 @@ function AddProperty() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
+
               <Save size={17} />
 
               {loading
                 ? "Creating..."
                 : "Create Property"}
+
             </button>
 
           </div>
