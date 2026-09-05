@@ -16,9 +16,10 @@ import AddProperty from "../pages/seller/AddProperty";
 import MyProperties from "../pages/seller/MyProperties";
 import EditProperty from "../pages/seller/EditProperty";
 
+import AdminDashboard from "../pages/admin/AdminDashboard";
 import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
-import CommissionManagement from "../pages/admin/CommissionManagement";
+import CommissionsManagement from "../pages/admin/CommissionsManagement";
 import UsersManagement from "../pages/admin/UsersManagement";
 import LocationsManagement from "../pages/admin/LocationsManagement";
 
@@ -90,9 +91,7 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route
             element={
-              <RoleRoute
-                allowedRoles={["BUYER"]}
-              />
+              <RoleRoute allowedRoles={["BUYER"]} />
             }
           >
 
@@ -136,9 +135,7 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route
             element={
-              <RoleRoute
-                allowedRoles={["SELLER"]}
-              />
+              <RoleRoute allowedRoles={["SELLER"]} />
             }
           >
 
@@ -189,6 +186,11 @@ function AppRoutes() {
             <Route element={<DashboardLayout />}>
 
               <Route
+                path="/admin/dashboard"
+                element={<AdminDashboard />}
+              />
+
+              <Route
                 path="/admin/leads"
                 element={<LeadsManagement />}
               />
@@ -200,7 +202,7 @@ function AppRoutes() {
 
               <Route
                 path="/admin/commissions"
-                element={<CommissionManagement />}
+                element={<CommissionsManagement />}
               />
 
               <Route

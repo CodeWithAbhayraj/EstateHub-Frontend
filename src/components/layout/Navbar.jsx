@@ -14,10 +14,29 @@ function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] =
     useState(false);
 
+  // ==========================================
+  // AUTH DATA
+  // ==========================================
+
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
-  const name =
-    localStorage.getItem("name") || "User";
+  const savedUser = localStorage.getItem("user");
+
+  let user = null;
+
+  try {
+    user = savedUser
+      ? JSON.parse(savedUser)
+      : null;
+  } catch (error) {
+    console.error("Invalid user data:", error);
+  }
+
+  const role = user?.role
+    ?.replace("ROLE_", "")
+    ?.trim()
+    ?.toUpperCase();
+
+  const name = user?.name || "User";
 
   // ==========================================
   // DASHBOARD LINK
@@ -46,6 +65,9 @@ function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // Remove old keys too, if present
     localStorage.removeItem("role");
     localStorage.removeItem("name");
     localStorage.removeItem("email");
@@ -177,7 +199,7 @@ function Navbar() {
                     </p>
 
                     <p className="text-[10px] font-semibold text-slate-400">
-                      {role}
+                      {role || "USER"}
                     </p>
 
                   </div>
@@ -325,65 +347,66 @@ function Navbar() {
                 </>
               )}
 
-              {(role === "ADMIN" ||
-                role === "SUPER_ADMIN") &&
-                token && (
-                  <>
-                    <Link
-                      to="/admin/dashboard"
-                      onClick={closeMobileMenu}
-                      className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Dashboard
-                    </Link>
+              {(token &&
+                (role === "ADMIN" ||
+                  role === "SUPER_ADMIN")) && (
+                <>
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={closeMobileMenu}
+                    className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Dashboard
+                  </Link>
 
-                    <Link
-                      to="/admin/leads"
-                      onClick={closeMobileMenu}
-                      className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Leads
-                    </Link>
+                  <Link
+                    to="/admin/leads"
+                    onClick={closeMobileMenu}
+                    className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Leads
+                  </Link>
 
-                    <Link
-                      to="/admin/visits"
-                      onClick={closeMobileMenu}
-                      className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Visits
-                    </Link>
+                  <Link
+                    to="/admin/visits"
+                    onClick={closeMobileMenu}
+                    className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Visits
+                  </Link>
 
-                    <Link
-                      to="/admin/commissions"
-                      onClick={closeMobileMenu}
-                      className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Commissions
-                    </Link>
+                  <Link
+                    to="/admin/commissions"
+                    onClick={closeMobileMenu}
+                    className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Commissions
+                  </Link>
 
-                    <Link
-                      to="/admin/users"
-                      onClick={closeMobileMenu}
-                      className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Users
-                    </Link>
+                  <Link
+                    to="/admin/users"
+                    onClick={closeMobileMenu}
+                    className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Users
+                  </Link>
 
-                    <Link
-                      to="/admin/locations"
-                      onClick={closeMobileMenu}
-                      className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Locations
-                    </Link>
-                  </>
-                )}
+                  <Link
+                    to="/admin/locations"
+                    onClick={closeMobileMenu}
+                    className="rounded-xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Locations
+                  </Link>
+                </>
+              )}
+
+              {/* USER INFO */}
 
               <div className="mt-3 border-t border-slate-100 pt-3">
 
                 {token ? (
                   <>
-
                     <div className="mb-3 flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3">
 
                       <UserCircle
@@ -398,7 +421,7 @@ function Navbar() {
                         </p>
 
                         <p className="text-xs font-semibold text-slate-400">
-                          {role}
+                          {role || "USER"}
                         </p>
 
                       </div>
@@ -413,7 +436,6 @@ function Navbar() {
                       <LogOut size={16} />
                       Logout
                     </button>
-
                   </>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
