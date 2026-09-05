@@ -15,6 +15,7 @@ import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
 import CommissionManagement from "../pages/admin/CommissionManagement";
 import UsersManagement from "../pages/admin/UsersManagement";
+import LocationsManagement from "../pages/admin/LocationsManagement";
 
 function AppRoutes() {
   return (
@@ -87,6 +88,11 @@ function AppRoutes() {
         <Route
           path="/admin/users"
           element={<UsersManagement />}
+        />
+
+        <Route
+          path="/admin/locations"
+          element={<LocationsManagement />}
         />
 
       </Routes>
