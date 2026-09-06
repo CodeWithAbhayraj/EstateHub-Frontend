@@ -17,8 +17,10 @@ import MyProperties from "../pages/seller/MyProperties";
 import EditProperty from "../pages/seller/EditProperty";
 
 import AdminDashboard from "../pages/admin/AdminDashboard";
+import PropertiesManagement from "../pages/admin/PropertiesManagement";
 import LeadsManagement from "../pages/admin/LeadsManagement";
 import VisitsManagement from "../pages/admin/VisitsManagement";
+import DealsManagement from "../pages/admin/DealsManagement";
 import CommissionsManagement from "../pages/admin/CommissionsManagement";
 import UsersManagement from "../pages/admin/UsersManagement";
 import LocationsManagement from "../pages/admin/LocationsManagement";
@@ -32,6 +34,7 @@ function Unauthorized() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50">
       <div className="text-center">
+
         <h1 className="text-3xl font-bold text-slate-900">
           403
         </h1>
@@ -39,6 +42,7 @@ function Unauthorized() {
         <p className="mt-2 text-slate-500">
           You are not authorized to access this page.
         </p>
+
       </div>
     </div>
   );
@@ -91,7 +95,9 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route
             element={
-              <RoleRoute allowedRoles={["BUYER"]} />
+              <RoleRoute
+                allowedRoles={["BUYER"]}
+              />
             }
           >
 
@@ -135,7 +141,9 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route
             element={
-              <RoleRoute allowedRoles={["SELLER"]} />
+              <RoleRoute
+                allowedRoles={["SELLER"]}
+              />
             }
           >
 
@@ -185,30 +193,56 @@ function AppRoutes() {
 
             <Route element={<DashboardLayout />}>
 
+              {/* Dashboard */}
+
               <Route
                 path="/admin/dashboard"
                 element={<AdminDashboard />}
               />
+
+              {/* Properties */}
+
+              <Route
+                path="/admin/properties"
+                element={<PropertiesManagement />}
+              />
+
+              {/* Leads */}
 
               <Route
                 path="/admin/leads"
                 element={<LeadsManagement />}
               />
 
+              {/* Visits */}
+
               <Route
                 path="/admin/visits"
                 element={<VisitsManagement />}
               />
+
+              {/* Deals */}
+
+              <Route
+                path="/admin/deals"
+                element={<DealsManagement />}
+              />
+
+              {/* Commissions */}
 
               <Route
                 path="/admin/commissions"
                 element={<CommissionsManagement />}
               />
 
+              {/* Users */}
+
               <Route
                 path="/admin/users"
                 element={<UsersManagement />}
               />
+
+              {/* Locations */}
 
               <Route
                 path="/admin/locations"

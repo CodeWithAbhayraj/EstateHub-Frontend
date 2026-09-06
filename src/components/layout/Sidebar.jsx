@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+
 import {
   LayoutDashboard,
   Building2,
@@ -15,15 +16,36 @@ import {
 } from "lucide-react";
 
 function Sidebar({ isOpen = true, onClose }) {
+  // ==========================================
+  // AUTH DATA
+  // ==========================================
+
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
+  const savedUser = localStorage.getItem("user");
 
   if (!token) {
     return null;
   }
 
+  let user = null;
+
+  try {
+    user = savedUser
+      ? JSON.parse(savedUser)
+      : null;
+  } catch (error) {
+    console.error("Invalid user data:", error);
+  }
+
+  const role = user?.role
+    ?.replace("ROLE_", "")
+    ?.trim()
+    ?.toUpperCase();
+
+  const name = user?.name || "User";
+
   // ==========================================
-  // NAVIGATION ITEM
+  // NAV ITEM
   // ==========================================
 
   const NavItem = ({ to, label, icon: Icon }) => (
@@ -93,7 +115,7 @@ function Sidebar({ isOpen = true, onClose }) {
               </h2>
 
               <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                {role?.replace("_", " ")}
+                {role || "USER"}
               </p>
             </div>
 
@@ -105,6 +127,7 @@ function Sidebar({ isOpen = true, onClose }) {
             type="button"
             onClick={onClose}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+            aria-label="Close menu"
           >
             <X size={19} />
           </button>
@@ -205,15 +228,11 @@ function Sidebar({ isOpen = true, onClose }) {
                 Administration
               </p>
 
-              {/* Dashboard */}
-
               <NavItem
                 to="/admin/dashboard"
                 label="Dashboard"
                 icon={LayoutDashboard}
               />
-
-              {/* Properties */}
 
               <NavItem
                 to="/admin/properties"
@@ -221,15 +240,11 @@ function Sidebar({ isOpen = true, onClose }) {
                 icon={Building2}
               />
 
-              {/* Leads */}
-
               <NavItem
                 to="/admin/leads"
                 label="Leads"
                 icon={UserCheck}
               />
-
-              {/* Visits */}
 
               <NavItem
                 to="/admin/visits"
@@ -237,15 +252,11 @@ function Sidebar({ isOpen = true, onClose }) {
                 icon={CalendarDays}
               />
 
-              {/* Deals */}
-
               <NavItem
                 to="/admin/deals"
                 label="Deals"
                 icon={Handshake}
               />
-
-              {/* Commissions */}
 
               <NavItem
                 to="/admin/commissions"
@@ -253,15 +264,11 @@ function Sidebar({ isOpen = true, onClose }) {
                 icon={WalletCards}
               />
 
-              {/* Users */}
-
               <NavItem
                 to="/admin/users"
                 label="Users"
                 icon={Users}
               />
-
-              {/* Locations */}
 
               <NavItem
                 to="/admin/locations"
@@ -287,11 +294,11 @@ function Sidebar({ isOpen = true, onClose }) {
             </p>
 
             <p className="mt-1 truncate text-sm font-bold text-slate-800">
-              {localStorage.getItem("name") || "User"}
+              {name}
             </p>
 
             <p className="mt-1 text-xs font-medium text-slate-400">
-              {role}
+              {role || "USER"}
             </p>
 
           </div>
