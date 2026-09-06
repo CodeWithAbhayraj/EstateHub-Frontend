@@ -29,12 +29,12 @@ import ProtectedRoute from "./ProtectedRoute";
 import RoleRoute from "./RoleRoute";
 
 import DashboardLayout from "../components/layout/DashboardLayout";
+import PublicLayout from "../components/layout/PublicLayout";
 
 function Unauthorized() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50">
       <div className="text-center">
-
         <h1 className="text-3xl font-bold text-slate-900">
           403
         </h1>
@@ -42,7 +42,6 @@ function Unauthorized() {
         <p className="mt-2 text-slate-500">
           You are not authorized to access this page.
         </p>
-
       </div>
     </div>
   );
@@ -57,30 +56,36 @@ function AppRoutes() {
             PUBLIC ROUTES
         ========================================== */}
 
-        <Route
-          path="/"
-          element={<Home />}
-        />
+        <Route element={<PublicLayout />}>
 
-        <Route
-          path="/properties"
-          element={<BrowseProperties />}
-        />
+          <Route
+            path="/"
+            element={<Home />}
+          />
 
-        <Route
-          path="/properties/:id"
-          element={<PropertyDetails />}
-        />
+          <Route
+            path="/properties"
+            element={<BrowseProperties />}
+          />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+          <Route
+            path="/properties/:id"
+            element={<PropertyDetails />}
+          />
 
-        <Route
-          path="/register"
-          element={<Register />}
-        />
+          <Route
+            path="/login"
+            element={<Login />}
+          />
+
+          <Route
+            path="/register"
+            element={<Register />}
+          />
+
+        </Route>
+
+        {/* Unauthorized page */}
 
         <Route
           path="/unauthorized"
@@ -193,56 +198,40 @@ function AppRoutes() {
 
             <Route element={<DashboardLayout />}>
 
-              {/* Dashboard */}
-
               <Route
                 path="/admin/dashboard"
                 element={<AdminDashboard />}
               />
-
-              {/* Properties */}
 
               <Route
                 path="/admin/properties"
                 element={<PropertiesManagement />}
               />
 
-              {/* Leads */}
-
               <Route
                 path="/admin/leads"
                 element={<LeadsManagement />}
               />
-
-              {/* Visits */}
 
               <Route
                 path="/admin/visits"
                 element={<VisitsManagement />}
               />
 
-              {/* Deals */}
-
               <Route
                 path="/admin/deals"
                 element={<DealsManagement />}
               />
-
-              {/* Commissions */}
 
               <Route
                 path="/admin/commissions"
                 element={<CommissionsManagement />}
               />
 
-              {/* Users */}
-
               <Route
                 path="/admin/users"
                 element={<UsersManagement />}
               />
-
-              {/* Locations */}
 
               <Route
                 path="/admin/locations"
