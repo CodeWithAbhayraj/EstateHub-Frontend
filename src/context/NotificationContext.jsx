@@ -8,7 +8,7 @@ import {
 
 import {
   getMyNotifications,
-  getUnreadNotificationsCount,
+  getUnreadNotificationCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from "../api/notificationApi";
@@ -42,7 +42,7 @@ export function NotificationProvider({ children }) {
       const [notificationData, countData] =
         await Promise.all([
           getMyNotifications(),
-          getUnreadNotificationsCount(),
+          getUnreadNotificationCount(),
         ]);
 
       setNotifications(
