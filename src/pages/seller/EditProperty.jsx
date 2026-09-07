@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import {
   ArrowLeft,
+  ArrowRight,
   Building2,
+  CheckCircle,
+  Home,
+  ImagePlus,
+  MapPin,
   Save,
 } from "lucide-react";
 
@@ -29,23 +35,19 @@ function EditProperty() {
 
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
-  const [propertyTypes, setPropertyTypes] =
-    useState([]);
+  const [propertyTypes, setPropertyTypes] = useState([]);
 
   const [cityId, setCityId] = useState("");
   const [areaId, setAreaId] = useState("");
-  const [propertyTypeId, setPropertyTypeId] =
-    useState("");
+  const [propertyTypeId, setPropertyTypeId] = useState("");
 
-  const [loadingCities, setLoadingCities] =
-    useState(true);
-  const [loadingAreas, setLoadingAreas] =
-    useState(false);
+  const [loadingCities, setLoadingCities] = useState(true);
+  const [loadingAreas, setLoadingAreas] = useState(false);
   const [loadingPropertyTypes, setLoadingPropertyTypes] =
     useState(false);
 
   // ==========================================
-  // PROPERTY
+  // PROPERTY FORM
   // ==========================================
 
   const [formData, setFormData] = useState({
@@ -62,8 +64,11 @@ function EditProperty() {
     description: "",
   });
 
-  const [originalStatus, setOriginalStatus] =
-    useState("");
+  // ==========================================
+  // PROPERTY STATE
+  // ==========================================
+
+  const [originalStatus, setOriginalStatus] = useState("");
 
   const [loadingProperty, setLoadingProperty] =
     useState(true);
@@ -81,14 +86,20 @@ function EditProperty() {
     const loadCities = async () => {
       try {
         setLoadingCities(true);
+        setError("");
 
         const data = await getAllCities();
 
         setCities(
-          Array.isArray(data) ? data : []
+          Array.isArray(data)
+            ? data
+            : []
         );
       } catch (err) {
-        console.error("Cities error:", err);
+        console.error(
+          "Cities error:",
+          err
+        );
 
         setError(
           err.response?.data?.message ||
@@ -107,7 +118,10 @@ function EditProperty() {
   // ==========================================
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoadingProperty(false);
+      return;
+    }
 
     const loadProperty = async () => {
       try {
@@ -118,21 +132,36 @@ function EditProperty() {
           await getPropertyById(id);
 
         setFormData({
-          title: property.title || "",
-          price: property.price ?? "",
-          area: property.area ?? "",
-          bhk: property.bhk ?? "",
+          title:
+            property.title || "",
+
+          price:
+            property.price ?? "",
+
+          area:
+            property.area ?? "",
+
+          bhk:
+            property.bhk ?? "",
+
           furnished:
             property.furnished || "",
+
           parking:
             property.parking ?? false,
-          facing: property.facing || "",
+
+          facing:
+            property.facing || "",
+
           readyToMove:
             property.readyToMove ?? false,
+
           newProject:
             property.newProject ?? false,
+
           resale:
             property.resale ?? false,
+
           description:
             property.description || "",
         });
@@ -151,7 +180,9 @@ function EditProperty() {
 
         setPropertyTypeId(
           property.propertyTypeId
-            ? String(property.propertyTypeId)
+            ? String(
+                property.propertyTypeId
+              )
             : ""
         );
 
@@ -194,7 +225,9 @@ function EditProperty() {
           await getAreasByCity(cityId);
 
         setAreas(
-          Array.isArray(data) ? data : []
+          Array.isArray(data)
+            ? data
+            : []
         );
       } catch (err) {
         console.error(
@@ -206,6 +239,8 @@ function EditProperty() {
           err.response?.data?.message ||
             "Failed to load areas."
         );
+
+        setAreas([]);
       } finally {
         setLoadingAreas(false);
       }
@@ -226,7 +261,9 @@ function EditProperty() {
 
     const loadPropertyTypes = async () => {
       try {
-        setLoadingPropertyTypes(true);
+        setLoadingPropertyTypes(
+          true
+        );
 
         const data =
           await getPropertyTypesByArea(
@@ -234,7 +271,9 @@ function EditProperty() {
           );
 
         setPropertyTypes(
-          Array.isArray(data) ? data : []
+          Array.isArray(data)
+            ? data
+            : []
         );
       } catch (err) {
         console.error(
@@ -246,8 +285,12 @@ function EditProperty() {
           err.response?.data?.message ||
             "Failed to load property types."
         );
+
+        setPropertyTypes([]);
       } finally {
-        setLoadingPropertyTypes(false);
+        setLoadingPropertyTypes(
+          false
+        );
       }
     };
 
@@ -258,13 +301,13 @@ function EditProperty() {
   // HANDLE FORM CHANGE
   // ==========================================
 
-  const handleChange = (e) => {
+  const handleChange = (event) => {
     const {
       name,
       value,
       type,
       checked,
-    } = e.target;
+    } = event.target;
 
     setFormData((prev) => ({
       ...prev,
@@ -273,26 +316,43 @@ function EditProperty() {
           ? checked
           : value,
     }));
+
+    if (error) {
+      setError("");
+    }
+
+    if (success) {
+      setSuccess("");
+    }
   };
 
   // ==========================================
   // UPDATE PROPERTY
   // ==========================================
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (
+    event
+  ) => {
+    event.preventDefault();
 
     setError("");
     setSuccess("");
 
-    // Validation
+    // ======================================
+    // VALIDATION
+    // ======================================
+
     if (!cityId) {
-      setError("Please select a city.");
+      setError(
+        "Please select a city."
+      );
       return;
     }
 
     if (!areaId) {
-      setError("Please select an area.");
+      setError(
+        "Please select an area."
+      );
       return;
     }
 
@@ -317,7 +377,9 @@ function EditProperty() {
       return;
     }
 
-    if (Number(formData.price) <= 0) {
+    if (
+      Number(formData.price) <= 0
+    ) {
       setError(
         "Property price must be greater than 0."
       );
@@ -331,9 +393,21 @@ function EditProperty() {
       return;
     }
 
-    if (Number(formData.area) <= 0) {
+    if (
+      Number(formData.area) <= 0
+    ) {
       setError(
         "Property area must be greater than 0."
+      );
+      return;
+    }
+
+    if (
+      formData.bhk !== "" &&
+      Number(formData.bhk) < 0
+    ) {
+      setError(
+        "BHK cannot be negative."
       );
       return;
     }
@@ -342,30 +416,39 @@ function EditProperty() {
       setSaving(true);
 
       const propertyData = {
-        title: formData.title.trim(),
+        title:
+          formData.title.trim(),
 
-        price: Number(formData.price),
+        price:
+          Number(formData.price),
 
-        area: Number(formData.area),
+        area:
+          Number(formData.area),
 
-        bhk: formData.bhk
-          ? Number(formData.bhk)
-          : null,
+        bhk:
+          formData.bhk !== ""
+            ? Number(formData.bhk)
+            : null,
 
-        cityId: Number(cityId),
+        cityId:
+          Number(cityId),
 
-        areaId: Number(areaId),
+        areaId:
+          Number(areaId),
 
         propertyTypeId:
           Number(propertyTypeId),
 
         furnished:
-          formData.furnished || null,
+          formData.furnished ||
+          null,
 
-        parking: formData.parking,
+        parking:
+          formData.parking,
 
         facing:
-          formData.facing.trim() || null,
+          formData.facing.trim() ||
+          null,
 
         readyToMove:
           formData.readyToMove,
@@ -396,6 +479,10 @@ function EditProperty() {
         "Property updated successfully."
       );
 
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
     } catch (err) {
       console.error(
         "Update property error:",
@@ -412,19 +499,71 @@ function EditProperty() {
   };
 
   // ==========================================
+  // STATUS META
+  // ==========================================
+
+  const getStatusMeta = (status) => {
+    switch (status) {
+      case "DRAFT":
+        return {
+          label: "Draft",
+          className:
+            "bg-slate-100 text-slate-700",
+        };
+
+      case "PENDING_APPROVAL":
+        return {
+          label: "Pending Approval",
+          className:
+            "bg-amber-50 text-amber-700",
+        };
+
+      case "PUBLISHED":
+        return {
+          label: "Published",
+          className:
+            "bg-emerald-50 text-emerald-700",
+        };
+
+      case "REJECTED":
+        return {
+          label: "Rejected",
+          className:
+            "bg-red-50 text-red-700",
+        };
+
+      default:
+        return {
+          label:
+            status || "Unknown",
+          className:
+            "bg-slate-100 text-slate-700",
+        };
+    }
+  };
+
+  // ==========================================
   // LOADING SCREEN
   // ==========================================
 
   if (loadingProperty) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="flex min-h-[60vh] w-full items-center justify-center">
 
         <div className="text-center">
 
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
 
-          <p className="text-sm text-slate-500">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+
+          </div>
+
+          <p className="mt-4 text-sm font-semibold text-slate-700">
             Loading property...
+          </p>
+
+          <p className="mt-1 text-xs text-slate-400">
+            Please wait a moment.
           </p>
 
         </div>
@@ -433,587 +572,955 @@ function EditProperty() {
     );
   }
 
-  // ==========================================
-  // UI
-  // ==========================================
+  const statusMeta =
+    getStatusMeta(
+      originalStatus
+    );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="w-full">
 
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* ==========================================
+          HEADER
+      ========================================== */}
 
-        {/* HEADER */}
+      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-        <div className="mb-8 flex items-center gap-4">
+        <div className="relative p-5 sm:p-7 lg:p-8">
 
-          <button
-            type="button"
-            onClick={() =>
-              navigate(
-                "/seller/properties"
-              )
-            }
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
-          >
-            <ArrowLeft size={18} />
-          </button>
+          <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-blue-50 blur-3xl" />
 
-          <div>
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
 
-            <p className="text-sm font-medium text-slate-500">
-              EstateHub Seller
-            </p>
+            <div className="flex min-w-0 items-start gap-3">
 
-            <h1 className="mt-1 text-3xl font-bold text-slate-900">
-              Edit Property
-            </h1>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/seller/properties"
+                  )
+                }
+                className="
+                  flex
+                  h-10
+                  w-10
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  text-slate-600
+                  transition
 
-            <p className="mt-2 text-sm text-slate-500">
-              Update your property information.
-            </p>
+                  hover:bg-slate-50
+                  hover:text-slate-900
 
-          </div>
+                  active:scale-95
+                "
+              >
+                <ArrowLeft size={18} />
+              </button>
 
-        </div>
+              <div className="min-w-0">
 
-        {/* STATUS */}
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-600">
+                  EstateHub Seller
+                </p>
 
-        {originalStatus && (
-          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  Edit Property
+                </h1>
 
-            <p className="text-sm text-slate-500">
-              Current Status
-            </p>
-
-            <p className="mt-1 font-bold text-slate-900">
-              {originalStatus}
-            </p>
-
-          </div>
-        )}
-
-        {/* ERROR */}
-
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
-
-        {/* SUCCESS */}
-
-        {success && (
-          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-            {success}
-          </div>
-        )}
-
-        {/* ==========================================
-            FORM
-        ========================================== */}
-
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6"
-        >
-
-          {/* LOCATION */}
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
-            <div className="mb-5 flex items-center gap-3">
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
-                <Building2
-                  size={20}
-                  className="text-blue-600"
-                />
-              </div>
-
-              <div>
-
-                <h2 className="font-bold text-slate-900">
-                  Property Location
-                </h2>
-
-                <p className="text-xs text-slate-500">
-                  City → Area → Property Type
+                <p className="mt-1 text-sm leading-6 text-slate-500 sm:text-base">
+                  Update your property information and images.
                 </p>
 
               </div>
 
             </div>
 
-            <div className="grid gap-5 md:grid-cols-3">
 
-              {/* CITY */}
+            {originalStatus && (
+              <span
+                className={`
+                  inline-flex
+                  w-fit
+                  shrink-0
+                  rounded-full
+                  px-3
+                  py-1.5
+                  text-[11px]
+                  font-bold
+                  uppercase
+                  tracking-wide
+                  ${statusMeta.className}
+                `}
+              >
+                {statusMeta.label}
+              </span>
+            )}
 
-              <div>
+          </div>
 
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  City
-                </label>
+        </div>
 
-                <select
-                  value={cityId}
-                  onChange={(e) => {
-                    setCityId(
-                      e.target.value
-                    );
+      </section>
 
-                    setAreaId("");
-                    setPropertyTypeId("");
-                  }}
-                  disabled={loadingCities}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 disabled:bg-slate-100"
-                >
 
-                  <option value="">
-                    {loadingCities
-                      ? "Loading cities..."
-                      : "Select City"}
-                  </option>
+      {/* ==========================================
+          ALERTS
+      ========================================== */}
 
-                  {cities.map((city) => (
+      {error && (
+        <div
+          className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium leading-5 text-red-600"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div
+          className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"
+          role="status"
+        >
+
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm">
+            <CheckCircle size={18} />
+          </div>
+
+          <div>
+            <p className="text-sm font-bold text-emerald-800">
+              Update successful
+            </p>
+
+            <p className="mt-1 text-xs text-emerald-700">
+              {success}
+            </p>
+          </div>
+
+        </div>
+      )}
+
+
+      {/* ==========================================
+          FORM
+      ========================================== */}
+
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-5"
+      >
+
+        {/* ========================================
+            LOCATION
+        ======================================== */}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+
+          <div className="mb-5 flex items-start gap-3">
+
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <MapPin size={20} />
+            </div>
+
+            <div>
+
+              <h2 className="text-lg font-bold text-slate-900">
+                Property Location
+              </h2>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+                Update the city, area and property type.
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div className="grid gap-4 md:grid-cols-3">
+
+            {/* CITY */}
+
+            <FormField
+              label="City"
+              required
+            >
+              <select
+                value={cityId}
+                onChange={(event) => {
+                  setCityId(
+                    event.target.value
+                  );
+
+                  setAreaId("");
+                  setPropertyTypeId("");
+                }}
+                disabled={
+                  loadingCities
+                }
+                className={
+                  selectClass
+                }
+              >
+
+                <option value="">
+                  {loadingCities
+                    ? "Loading cities..."
+                    : "Select City"}
+                </option>
+
+                {cities.map(
+                  (city) => (
                     <option
                       key={city.id}
                       value={city.id}
                     >
                       {city.name}
                     </option>
-                  ))}
+                  )
+                )}
 
-                </select>
+              </select>
+            </FormField>
 
-              </div>
 
-              {/* AREA */}
+            {/* AREA */}
 
-              <div>
+            <FormField
+              label="Area"
+              required
+            >
+              <select
+                value={areaId}
+                onChange={(event) => {
+                  setAreaId(
+                    event.target.value
+                  );
 
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Area
-                </label>
+                  setPropertyTypeId("");
+                }}
+                disabled={
+                  !cityId ||
+                  loadingAreas
+                }
+                className={
+                  selectClass
+                }
+              >
 
-                <select
-                  value={areaId}
-                  onChange={(e) => {
-                    setAreaId(
-                      e.target.value
-                    );
+                <option value="">
+                  {!cityId
+                    ? "Select city first"
+                    : loadingAreas
+                    ? "Loading areas..."
+                    : "Select Area"}
+                </option>
 
-                    setPropertyTypeId("");
-                  }}
-                  disabled={
-                    !cityId ||
-                    loadingAreas
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 disabled:bg-slate-100"
-                >
-
-                  <option value="">
-                    {!cityId
-                      ? "Select city first"
-                      : loadingAreas
-                      ? "Loading areas..."
-                      : "Select Area"}
-                  </option>
-
-                  {areas.map((area) => (
+                {areas.map(
+                  (area) => (
                     <option
                       key={area.id}
                       value={area.id}
                     >
                       {area.name}
                     </option>
-                  ))}
+                  )
+                )}
 
-                </select>
+              </select>
+            </FormField>
 
-              </div>
 
-              {/* PROPERTY TYPE */}
+            {/* TYPE */}
 
-              <div>
+            <FormField
+              label="Property Type"
+              required
+            >
+              <select
+                value={
+                  propertyTypeId
+                }
+                onChange={(event) =>
+                  setPropertyTypeId(
+                    event.target.value
+                  )
+                }
+                disabled={
+                  !areaId ||
+                  loadingPropertyTypes
+                }
+                className={
+                  selectClass
+                }
+              >
 
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Property Type
-                </label>
+                <option value="">
+                  {!areaId
+                    ? "Select area first"
+                    : loadingPropertyTypes
+                    ? "Loading types..."
+                    : "Select Property Type"}
+                </option>
 
-                <select
-                  value={propertyTypeId}
-                  onChange={(e) =>
-                    setPropertyTypeId(
-                      e.target.value
-                    )
-                  }
-                  disabled={
-                    !areaId ||
-                    loadingPropertyTypes
-                  }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500 disabled:bg-slate-100"
-                >
+                {propertyTypes.map(
+                  (type) => (
+                    <option
+                      key={type.id}
+                      value={type.id}
+                    >
+                      {type.name}
+                    </option>
+                  )
+                )}
 
-                  <option value="">
-                    {!areaId
-                      ? "Select area first"
-                      : loadingPropertyTypes
-                      ? "Loading types..."
-                      : "Select Property Type"}
-                  </option>
+              </select>
+            </FormField>
 
-                  {propertyTypes.map(
-                    (type) => (
-                      <option
-                        key={type.id}
-                        value={type.id}
-                      >
-                        {type.name}
-                      </option>
-                    )
-                  )}
+          </div>
 
-                </select>
+        </section>
 
-              </div>
+
+        {/* ========================================
+            BASIC DETAILS
+        ======================================== */}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+
+          <div className="mb-5 flex items-center gap-3">
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <Home size={20} />
+            </div>
+
+            <div>
+
+              <h2 className="text-lg font-bold text-slate-900">
+                Basic Details
+              </h2>
+
+              <p className="text-xs text-slate-500 sm:text-sm">
+                Keep the property information accurate and complete.
+              </p>
 
             </div>
 
           </div>
 
-          {/* BASIC DETAILS */}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-4 md:grid-cols-2">
 
-            <h2 className="mb-5 text-lg font-bold text-slate-900">
-              Basic Details
-            </h2>
+            {/* TITLE */}
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="md:col-span-2">
 
-              {/* TITLE */}
-
-              <div className="md:col-span-2">
-
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Property Title
-                </label>
-
+              <FormField
+                label="Property Title"
+                required
+              >
                 <input
                   type="text"
                   name="title"
-                  value={formData.title}
-                  onChange={handleChange}
+                  value={
+                    formData.title
+                  }
+                  onChange={
+                    handleChange
+                  }
                   placeholder="e.g. Spacious 2 BHK Flat in Baner"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                  className={
+                    inputClass
+                  }
                 />
-
-              </div>
-
-              {/* PRICE */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Price
-                </label>
-
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  min="1"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
-                />
-
-              </div>
-
-              {/* AREA */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Area (sq.ft)
-                </label>
-
-                <input
-                  type="number"
-                  name="area"
-                  value={formData.area}
-                  onChange={handleChange}
-                  min="1"
-                  step="0.01"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
-                />
-
-              </div>
-
-              {/* BHK */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  BHK
-                </label>
-
-                <input
-                  type="number"
-                  name="bhk"
-                  value={formData.bhk}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
-                />
-
-              </div>
-
-              {/* FURNISHED */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Furnished
-                </label>
-
-                <select
-                  name="furnished"
-                  value={formData.furnished}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-                >
-
-                  <option value="">
-                    Select
-                  </option>
-
-                  <option value="Furnished">
-                    Furnished
-                  </option>
-
-                  <option value="Semi-Furnished">
-                    Semi-Furnished
-                  </option>
-
-                  <option value="Unfurnished">
-                    Unfurnished
-                  </option>
-
-                </select>
-
-              </div>
-
-              {/* FACING */}
-
-              <div>
-
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  Facing
-                </label>
-
-                <select
-                  name="facing"
-                  value={formData.facing}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-slate-500"
-                >
-
-                  <option value="">
-                    Select Facing
-                  </option>
-
-                  <option value="North">
-                    North
-                  </option>
-
-                  <option value="South">
-                    South
-                  </option>
-
-                  <option value="East">
-                    East
-                  </option>
-
-                  <option value="West">
-                    West
-                  </option>
-
-                  <option value="North-East">
-                    North-East
-                  </option>
-
-                  <option value="North-West">
-                    North-West
-                  </option>
-
-                  <option value="South-East">
-                    South-East
-                  </option>
-
-                  <option value="South-West">
-                    South-West
-                  </option>
-
-                </select>
-
-              </div>
+              </FormField>
 
             </div>
 
+
+            {/* PRICE */}
+
+            <FormField
+              label="Price"
+              required
+            >
+              <input
+                type="number"
+                name="price"
+                value={
+                  formData.price
+                }
+                onChange={
+                  handleChange
+                }
+                min="1"
+                inputMode="decimal"
+                className={
+                  inputClass
+                }
+              />
+            </FormField>
+
+
+            {/* AREA */}
+
+            <FormField
+              label="Area (sq.ft)"
+              required
+            >
+              <input
+                type="number"
+                name="area"
+                value={
+                  formData.area
+                }
+                onChange={
+                  handleChange
+                }
+                min="1"
+                step="0.01"
+                inputMode="decimal"
+                className={
+                  inputClass
+                }
+              />
+            </FormField>
+
+
+            {/* BHK */}
+
+            <FormField
+              label="BHK"
+            >
+              <input
+                type="number"
+                name="bhk"
+                value={
+                  formData.bhk
+                }
+                onChange={
+                  handleChange
+                }
+                min="0"
+                inputMode="numeric"
+                className={
+                  inputClass
+                }
+              />
+            </FormField>
+
+
+            {/* FURNISHED */}
+
+            <FormField
+              label="Furnished"
+            >
+              <select
+                name="furnished"
+                value={
+                  formData.furnished
+                }
+                onChange={
+                  handleChange
+                }
+                className={
+                  selectClass
+                }
+              >
+
+                <option value="">
+                  Select
+                </option>
+
+                <option value="Furnished">
+                  Furnished
+                </option>
+
+                <option value="Semi-Furnished">
+                  Semi-Furnished
+                </option>
+
+                <option value="Unfurnished">
+                  Unfurnished
+                </option>
+
+              </select>
+            </FormField>
+
+
+            {/* FACING */}
+
+            <FormField
+              label="Facing"
+            >
+              <select
+                name="facing"
+                value={
+                  formData.facing
+                }
+                onChange={
+                  handleChange
+                }
+                className={
+                  selectClass
+                }
+              >
+
+                <option value="">
+                  Select Facing
+                </option>
+
+                <option value="North">
+                  North
+                </option>
+
+                <option value="South">
+                  South
+                </option>
+
+                <option value="East">
+                  East
+                </option>
+
+                <option value="West">
+                  West
+                </option>
+
+                <option value="North-East">
+                  North-East
+                </option>
+
+                <option value="North-West">
+                  North-West
+                </option>
+
+                <option value="South-East">
+                  South-East
+                </option>
+
+                <option value="South-West">
+                  South-West
+                </option>
+
+              </select>
+            </FormField>
+
           </div>
 
-          {/* OPTIONS */}
+        </section>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
-            <h2 className="mb-5 text-lg font-bold text-slate-900">
+        {/* ========================================
+            OPTIONS
+        ======================================== */}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+
+          <div className="mb-5">
+
+            <h2 className="text-lg font-bold text-slate-900">
               Property Options
             </h2>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
-
-                <input
-                  type="checkbox"
-                  name="parking"
-                  checked={formData.parking}
-                  onChange={handleChange}
-                  className="h-4 w-4"
-                />
-
-                <span className="text-sm font-medium text-slate-700">
-                  Parking Available
-                </span>
-
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
-
-                <input
-                  type="checkbox"
-                  name="readyToMove"
-                  checked={
-                    formData.readyToMove
-                  }
-                  onChange={handleChange}
-                  className="h-4 w-4"
-                />
-
-                <span className="text-sm font-medium text-slate-700">
-                  Ready to Move
-                </span>
-
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
-
-                <input
-                  type="checkbox"
-                  name="newProject"
-                  checked={
-                    formData.newProject
-                  }
-                  onChange={handleChange}
-                  className="h-4 w-4"
-                />
-
-                <span className="text-sm font-medium text-slate-700">
-                  New Project
-                </span>
-
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
-
-                <input
-                  type="checkbox"
-                  name="resale"
-                  checked={
-                    formData.resale
-                  }
-                  onChange={handleChange}
-                  className="h-4 w-4"
-                />
-
-                <span className="text-sm font-medium text-slate-700">
-                  Resale
-                </span>
-
-              </label>
-
-            </div>
+            <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+              Update the features available with this property.
+            </p>
 
           </div>
 
-          {/* DESCRIPTION */}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
-            <h2 className="mb-5 text-lg font-bold text-slate-900">
-              Description
-            </h2>
+            <CheckboxOption
+              name="parking"
+              checked={
+                formData.parking
+              }
+              onChange={
+                handleChange
+              }
+              label="Parking Available"
+            />
 
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows="6"
-              placeholder="Describe your property..."
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+            <CheckboxOption
+              name="readyToMove"
+              checked={
+                formData.readyToMove
+              }
+              onChange={
+                handleChange
+              }
+              label="Ready to Move"
+            />
+
+            <CheckboxOption
+              name="newProject"
+              checked={
+                formData.newProject
+              }
+              onChange={
+                handleChange
+              }
+              label="New Project"
+            />
+
+            <CheckboxOption
+              name="resale"
+              checked={
+                formData.resale
+              }
+              onChange={
+                handleChange
+              }
+              label="Resale"
             />
 
           </div>
 
-          {/* SAVE */}
+        </section>
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 
-            <button
-              type="button"
-              onClick={() =>
-                navigate(
-                  "/seller/properties"
-                )
-              }
-              className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
+        {/* ========================================
+            DESCRIPTION
+        ======================================== */}
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
-              <Save size={17} />
+          <div className="mb-5">
 
-              {saving
-                ? "Updating..."
-                : "Update Property"}
+            <h2 className="text-lg font-bold text-slate-900">
+              Description
+            </h2>
 
-            </button>
+            <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+              Update the description buyers will see.
+            </p>
 
           </div>
 
-        </form>
+          <textarea
+            name="description"
+            value={
+              formData.description
+            }
+            onChange={
+              handleChange
+            }
+            rows={6}
+            placeholder="Describe your property..."
+            className="
+              w-full
+              resize-y
+              rounded-xl
+              border
+              border-slate-200
+              bg-white
+              px-4
+              py-3
+              text-sm
+              font-medium
+              leading-6
+              text-slate-800
+              shadow-sm
+              outline-none
+              transition
 
-        {/* ==========================================
-            IMAGE MANAGEMENT
-        ========================================== */}
+              placeholder:text-slate-400
 
-        <div className="mt-6">
+              hover:border-slate-400
 
-          <PropertyImageUpload
-            propertyId={Number(id)}
+              focus:border-slate-500
+              focus:ring-4
+              focus:ring-slate-100
+            "
           />
+
+        </section>
+
+
+        {/* ========================================
+            SAVE ACTIONS
+        ======================================== */}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+            <div className="min-w-0">
+
+              <p className="text-sm font-semibold text-slate-800">
+                Save your changes
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Your existing property status will remain unchanged.
+              </p>
+
+            </div>
+
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/seller/properties"
+                  )
+                }
+                className="
+                  inline-flex
+                  min-h-11
+                  items-center
+                  justify-center
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  px-5
+                  py-3
+                  text-sm
+                  font-semibold
+                  text-slate-700
+                  transition
+
+                  hover:bg-slate-50
+                "
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="
+                  inline-flex
+                  min-h-11
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  bg-slate-900
+                  px-5
+                  py-3
+                  text-sm
+                  font-semibold
+                  text-white
+                  shadow-sm
+                  transition
+
+                  hover:bg-slate-800
+                  hover:shadow-md
+
+                  active:scale-[0.98]
+
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+              >
+
+                {saving ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Save size={17} />
+                    Update Property
+                    <ArrowRight size={16} />
+                  </>
+                )}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </form>
+
+
+      {/* ==========================================
+          IMAGE MANAGEMENT
+      ========================================== */}
+
+      <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+
+        <div className="mb-5 flex items-start gap-3">
+
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <ImagePlus size={20} />
+          </div>
+
+          <div>
+
+            <h2 className="text-lg font-bold text-slate-900">
+              Property Images
+            </h2>
+
+            <p className="mt-1 text-xs leading-5 text-slate-500 sm:text-sm">
+              Manage your existing images or upload new ones.
+            </p>
+
+          </div>
 
         </div>
 
-      </div>
+
+        <PropertyImageUpload
+          propertyId={Number(id)}
+        />
+
+      </section>
+
     </div>
   );
 }
+
+
+// ==========================================
+// FORM FIELD
+// ==========================================
+
+function FormField({
+  label,
+  required = false,
+  children,
+}) {
+  return (
+    <div className="w-full">
+
+      <label className="mb-2 block text-sm font-semibold text-slate-700">
+
+        {label}
+
+        {required && (
+          <span className="ml-1 text-red-500">
+            *
+          </span>
+        )}
+
+      </label>
+
+      {children}
+
+    </div>
+  );
+}
+
+
+// ==========================================
+// CHECKBOX OPTION
+// ==========================================
+
+function CheckboxOption({
+  name,
+  checked,
+  onChange,
+  label,
+}) {
+  return (
+    <label
+      className="
+        flex
+        min-h-12
+        cursor-pointer
+        items-center
+        gap-3
+        rounded-xl
+        border
+        border-slate-200
+        bg-white
+        p-3.5
+        transition
+
+        hover:border-slate-300
+        hover:bg-slate-50
+
+        has-[:checked]:border-blue-200
+        has-[:checked]:bg-blue-50
+      "
+    >
+
+      <input
+        type="checkbox"
+        name={name}
+        checked={checked}
+        onChange={onChange}
+        className="h-4 w-4 accent-blue-600"
+      />
+
+      <span className="text-sm font-semibold text-slate-700">
+        {label}
+      </span>
+
+    </label>
+  );
+}
+
+
+// ==========================================
+// COMMON CLASSES
+// ==========================================
+
+const inputClass = `
+  min-h-11
+  w-full
+  rounded-xl
+  border
+  border-slate-200
+  bg-white
+  px-4
+  py-2.5
+  text-sm
+  font-medium
+  text-slate-800
+  shadow-sm
+  outline-none
+  transition
+
+  placeholder:text-slate-400
+
+  hover:border-slate-400
+
+  focus:border-slate-500
+  focus:ring-4
+  focus:ring-slate-100
+`;
+
+const selectClass = `
+  min-h-11
+  w-full
+  rounded-xl
+  border
+  border-slate-200
+  bg-white
+  px-4
+  py-2.5
+  text-sm
+  font-medium
+  text-slate-800
+  shadow-sm
+  outline-none
+  transition
+
+  hover:border-slate-400
+
+  focus:border-slate-500
+  focus:ring-4
+  focus:ring-slate-100
+
+  disabled:cursor-not-allowed
+  disabled:bg-slate-100
+  disabled:text-slate-400
+`;
 
 export default EditProperty;
