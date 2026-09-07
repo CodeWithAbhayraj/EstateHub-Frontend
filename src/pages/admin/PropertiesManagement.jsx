@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   MapPin,
@@ -7,7 +7,13 @@ import {
   XCircle,
   RefreshCw,
   Search,
+  Clock3,
+  Eye,
+  ArrowRight,
+  AlertCircle,
+  Filter,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import {
   getAllPropertiesForAdmin,
@@ -17,37 +23,57 @@ import {
 
 function PropertiesManagement() {
   const [properties, setProperties] = useState([]);
-  const [filteredProperties, setFilteredProperties] = useState([]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [actionLoading, setActionLoading] =
+    useState(null);
+
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const [actionLoading, setActionLoading] = useState(null);
+  const [showRejectModal, setShowRejectModal] =
+    useState(false);
 
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedProperty, setSelectedProperty] =
+    useState(null);
+
+  const [rejectionReason, setRejectionReason] =
+    useState("");
 
   // ==========================================
   // FETCH ALL PROPERTIES
   // ==========================================
 
-  const fetchProperties = async () => {
+  const fetchProperties = async (
+    showFullLoader = true
+  ) => {
     try {
-      setLoading(true);
+      if (showFullLoader) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
       setError("");
 
-      const data = await getAllPropertiesForAdmin();
+      const data =
+        await getAllPropertiesForAdmin();
 
-      const propertyList = Array.isArray(data) ? data : [];
-
-      setProperties(propertyList);
-      setFilteredProperties(propertyList);
+      setProperties(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (err) {
-      console.error("Properties error:", err);
+      console.error(
+        "Properties error:",
+        err
+      );
 
       setError(
         err.response?.data?.message ||
@@ -55,79 +81,129 @@ function PropertiesManagement() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  // ==========================================
+  // INITIAL LOAD
+  // ==========================================
 
   useEffect(() => {
     fetchProperties();
   }, []);
 
   // ==========================================
+  // REFRESH
+  // ==========================================
+
+  const handleRefresh = async () => {
+    await fetchProperties(false);
+  };
+
+  // ==========================================
   // SEARCH + FILTER
   // ==========================================
 
-  useEffect(() => {
-    const value = search.toLowerCase().trim();
+  const filteredProperties = useMemo(() => {
+    const value =
+      search.toLowerCase().trim();
 
-    const result = properties.filter((property) => {
-      const matchesSearch =
-        !value ||
-        String(property.title || "")
-          .toLowerCase()
-          .includes(value) ||
-        String(property.city || "")
-          .toLowerCase()
-          .includes(value) ||
-        String(property.areaName || "")
-          .toLowerCase()
-          .includes(value) ||
-        String(property.id || "")
-          .toLowerCase()
-          .includes(value);
+    return properties.filter(
+      (property) => {
+        const matchesSearch =
+          !value ||
+          String(
+            property.title || ""
+          )
+            .toLowerCase()
+            .includes(value) ||
 
-      const matchesStatus =
-        statusFilter === "ALL" ||
-        property.status === statusFilter;
+          String(
+            property.city || ""
+          )
+            .toLowerCase()
+            .includes(value) ||
 
-      return matchesSearch && matchesStatus;
-    });
+          String(
+            property.areaName || ""
+          )
+            .toLowerCase()
+            .includes(value) ||
 
-    setFilteredProperties(result);
-  }, [search, statusFilter, properties]);
+          String(
+            property.id || ""
+          ).includes(value);
+
+        const matchesStatus =
+          statusFilter === "ALL" ||
+          property.status ===
+            statusFilter;
+
+        return (
+          matchesSearch &&
+          matchesStatus
+        );
+      }
+    );
+  }, [
+    properties,
+    search,
+    statusFilter,
+  ]);
 
   // ==========================================
   // PRICE FORMAT
   // ==========================================
 
   const formatPrice = (price) => {
-    if (!price) {
+    if (
+      price === null ||
+      price === undefined ||
+      price === ""
+    ) {
       return "Price on request";
     }
 
-    return `₹${Number(price).toLocaleString("en-IN")}`;
+    return `₹${Number(
+      price
+    ).toLocaleString("en-IN")}`;
   };
 
   // ==========================================
-  // APPROVE PROPERTY
+  // APPROVE
   // ==========================================
 
-  const handleApprove = async (propertyId) => {
+  const handleApprove = async (
+    propertyId
+  ) => {
     try {
       setActionLoading(propertyId);
       setError("");
+      setSuccess("");
 
       const updatedProperty =
-        await approveProperty(propertyId);
+        await approveProperty(
+          propertyId
+        );
 
       setProperties((prev) =>
         prev.map((property) =>
-          property.id === propertyId
+          String(property.id) ===
+          String(propertyId)
             ? updatedProperty
             : property
         )
       );
+
+      setSuccess(
+        "Property approved successfully."
+      );
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Approve property error:",
+        err
+      );
 
       setError(
         err.response?.data?.message ||
@@ -142,15 +218,34 @@ function PropertiesManagement() {
   // OPEN REJECT MODAL
   // ==========================================
 
-  const openRejectModal = (property) => {
-    setSelectedProperty(property);
+  const openRejectModal = (
+    property
+  ) => {
+    setSelectedProperty(
+      property
+    );
+
     setRejectionReason("");
     setError("");
     setShowRejectModal(true);
   };
 
   // ==========================================
-  // REJECT PROPERTY
+  // CLOSE REJECT MODAL
+  // ==========================================
+
+  const closeRejectModal = () => {
+    if (actionLoading !== null) {
+      return;
+    }
+
+    setShowRejectModal(false);
+    setSelectedProperty(null);
+    setRejectionReason("");
+  };
+
+  // ==========================================
+  // REJECT
   // ==========================================
 
   const handleReject = async () => {
@@ -158,33 +253,53 @@ function PropertiesManagement() {
       return;
     }
 
-    if (!rejectionReason.trim()) {
-      setError("Please enter rejection reason.");
+    const reason =
+      rejectionReason.trim();
+
+    if (!reason) {
+      setError(
+        "Please enter a rejection reason."
+      );
       return;
     }
 
     try {
-      setActionLoading(selectedProperty.id);
-      setError("");
-
-      const updatedProperty = await rejectProperty(
-        selectedProperty.id,
-        rejectionReason.trim()
+      setActionLoading(
+        selectedProperty.id
       );
+
+      setError("");
+      setSuccess("");
+
+      const updatedProperty =
+        await rejectProperty(
+          selectedProperty.id,
+          reason
+        );
 
       setProperties((prev) =>
         prev.map((property) =>
-          property.id === selectedProperty.id
+          String(property.id) ===
+          String(
+            selectedProperty.id
+          )
             ? updatedProperty
             : property
         )
+      );
+
+      setSuccess(
+        "Property rejected successfully."
       );
 
       setShowRejectModal(false);
       setSelectedProperty(null);
       setRejectionReason("");
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Reject property error:",
+        err
+      );
 
       setError(
         err.response?.data?.message ||
@@ -196,539 +311,1421 @@ function PropertiesManagement() {
   };
 
   // ==========================================
-  // STATUS STYLES
+  // STATUS META
   // ==========================================
 
-  const getStatusClass = (status) => {
+  const getStatusMeta = (
+    status
+  ) => {
     switch (status) {
+      case "DRAFT":
+        return {
+          label: "Draft",
+          className:
+            "bg-slate-100 text-slate-700",
+          icon: Building2,
+        };
+
       case "PENDING_APPROVAL":
-        return "bg-yellow-100 text-yellow-700";
+        return {
+          label: "Pending",
+          className:
+            "bg-amber-50 text-amber-700",
+          icon: Clock3,
+        };
 
       case "PUBLISHED":
-        return "bg-green-100 text-green-700";
+        return {
+          label: "Published",
+          className:
+            "bg-emerald-50 text-emerald-700",
+          icon: CheckCircle,
+        };
 
       case "REJECTED":
-        return "bg-red-100 text-red-700";
-
-      case "DRAFT":
-        return "bg-slate-100 text-slate-700";
+        return {
+          label: "Rejected",
+          className:
+            "bg-red-50 text-red-700",
+          icon: XCircle,
+        };
 
       case "SOLD":
-        return "bg-purple-100 text-purple-700";
+        return {
+          label: "Sold",
+          className:
+            "bg-violet-50 text-violet-700",
+          icon: CheckCircle,
+        };
 
       default:
-        return "bg-slate-100 text-slate-700";
+        return {
+          label:
+            status || "Unknown",
+          className:
+            "bg-slate-100 text-slate-600",
+          icon: Building2,
+        };
     }
   };
 
+  // ==========================================
+  // STATS
+  // ==========================================
+
+  const totalCount =
+    properties.length;
+
+  const pendingCount =
+    properties.filter(
+      (property) =>
+        property.status ===
+        "PENDING_APPROVAL"
+    ).length;
+
+  const publishedCount =
+    properties.filter(
+      (property) =>
+        property.status ===
+        "PUBLISHED"
+    ).length;
+
+  const rejectedCount =
+    properties.filter(
+      (property) =>
+        property.status ===
+        "REJECTED"
+    ).length;
+
+  const activeFilter =
+    statusFilter !== "ALL" ||
+    search.trim() !== "";
+
+  // ==========================================
+  // CLEAR FILTERS
+  // ==========================================
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="w-full">
 
-        {/* ==========================================
-            HEADER
-        ========================================== */}
+      {/* ==========================================
+          HEADER
+      ========================================== */}
 
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">
-              EstateHub Admin
-            </p>
+      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-            <h1 className="mt-1 text-3xl font-bold text-slate-900">
-              Properties Management
-            </h1>
+        <div className="relative p-5 sm:p-7 lg:p-8">
 
-            <p className="mt-2 text-sm text-slate-500">
-              Review and manage all property listings.
-            </p>
+          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-blue-50 blur-3xl" />
+
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+
+            {/* TITLE */}
+
+            <div className="flex min-w-0 items-start gap-3">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <Building2 size={21} />
+              </div>
+
+              <div className="min-w-0">
+
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-600">
+                  EstateHub Administration
+                </p>
+
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                  Properties Management
+                </h1>
+
+                <p className="mt-1 text-sm leading-6 text-slate-500 sm:text-base">
+                  Review, approve and manage all property listings.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* REFRESH */}
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={
+                loading ||
+                refreshing
+              }
+              className="
+                inline-flex
+                min-h-11
+                w-full
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                bg-slate-900
+                px-5
+                py-3
+                text-sm
+                font-semibold
+                text-white
+                shadow-sm
+                transition
+
+                hover:bg-slate-800
+                hover:shadow-md
+
+                active:scale-[0.98]
+
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+
+                sm:w-fit
+              "
+            >
+              <RefreshCw
+                size={16}
+                className={
+                  refreshing
+                    ? "animate-spin"
+                    : ""
+                }
+              />
+
+              {refreshing
+                ? "Refreshing..."
+                : "Refresh"}
+            </button>
+
           </div>
 
-          <button
-            onClick={fetchProperties}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
-          >
-            <RefreshCw
-              size={17}
-              className={loading ? "animate-spin" : ""}
-            />
-            Refresh
-          </button>
         </div>
 
-        {/* ==========================================
-            ERROR
-        ========================================== */}
+      </section>
 
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-            {error}
+
+      {/* ==========================================
+          ALERTS
+      ========================================== */}
+
+      {error && (
+        <div
+          className="
+            mb-4
+            flex
+            items-start
+            gap-3
+            rounded-2xl
+            border
+            border-red-200
+            bg-red-50
+            p-4
+            text-sm
+            font-medium
+            leading-5
+            text-red-600
+          "
+          role="alert"
+        >
+          <AlertCircle
+            size={18}
+            className="mt-0.5 shrink-0"
+          />
+
+          <span>{error}</span>
+        </div>
+      )}
+
+      {success && (
+        <div
+          className="
+            mb-4
+            flex
+            items-start
+            gap-3
+            rounded-2xl
+            border
+            border-emerald-200
+            bg-emerald-50
+            p-4
+            text-sm
+            font-medium
+            leading-5
+            text-emerald-700
+          "
+          role="status"
+        >
+          <CheckCircle
+            size={18}
+            className="mt-0.5 shrink-0"
+          />
+
+          <span>{success}</span>
+        </div>
+      )}
+
+
+      {/* ==========================================
+          STATS
+      ========================================== */}
+
+      <section className="mb-6">
+
+        <div className="mb-4">
+
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+            Overview
+          </p>
+
+          <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+            Property Status
+          </h2>
+
+        </div>
+
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+
+          <StatCard
+            label="Total"
+            value={totalCount}
+            description="All properties"
+            icon={Building2}
+            iconClass="bg-blue-50 text-blue-600"
+          />
+
+          <StatCard
+            label="Pending"
+            value={pendingCount}
+            description="Need review"
+            icon={Clock3}
+            valueClass="text-amber-600"
+            iconClass="bg-amber-50 text-amber-600"
+          />
+
+          <StatCard
+            label="Published"
+            value={publishedCount}
+            description="Live listings"
+            icon={CheckCircle}
+            valueClass="text-emerald-600"
+            iconClass="bg-emerald-50 text-emerald-600"
+          />
+
+          <StatCard
+            label="Rejected"
+            value={rejectedCount}
+            description="Need changes"
+            icon={XCircle}
+            valueClass="text-red-600"
+            iconClass="bg-red-50 text-red-600"
+          />
+
+        </div>
+
+      </section>
+
+
+      {/* ==========================================
+          SEARCH + FILTER
+      ========================================== */}
+
+      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+
+        <div className="flex flex-col gap-4">
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
+            <div className="flex items-center gap-2">
+
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                <Filter size={17} />
+              </div>
+
+              <div>
+
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  Search & Filter
+                </p>
+
+                <p className="text-sm font-semibold text-slate-800">
+                  Find a property
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {activeFilter && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-left text-xs font-semibold text-blue-600 hover:text-blue-700 sm:text-right"
+              >
+                Clear filters
+              </button>
+            )}
+
           </div>
-        )}
 
-        {/* ==========================================
-            FILTERS
-        ========================================== */}
 
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
 
-            {/* Search */}
+            {/* SEARCH */}
+
             <div className="relative">
+
               <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={17}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
               />
 
               <input
                 type="text"
-                placeholder="Search property, city, area..."
                 value={search}
-                onChange={(e) =>
-                  setSearch(e.target.value)
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
                 }
-                className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 outline-none transition focus:border-slate-500"
+                placeholder="Search title, city, area or property ID..."
+                className="
+                  min-h-11
+                  w-full
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  py-2.5
+                  pl-10
+                  pr-4
+                  text-sm
+                  font-medium
+                  text-slate-800
+                  shadow-sm
+                  outline-none
+                  transition
+
+                  placeholder:text-slate-400
+
+                  hover:border-slate-400
+
+                  focus:border-slate-500
+                  focus:ring-4
+                  focus:ring-slate-100
+                "
               />
+
             </div>
 
-            {/* Status */}
+
+            {/* STATUS */}
+
             <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value)
+              value={
+                statusFilter
               }
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-slate-500"
+              onChange={(event) =>
+                setStatusFilter(
+                  event.target.value
+                )
+              }
+              className="
+                min-h-11
+                w-full
+                rounded-xl
+                border
+                border-slate-200
+                bg-white
+                px-4
+                py-2.5
+                text-sm
+                font-medium
+                text-slate-800
+                shadow-sm
+                outline-none
+                transition
+
+                hover:border-slate-400
+
+                focus:border-slate-500
+                focus:ring-4
+                focus:ring-slate-100
+              "
             >
+
               <option value="ALL">
                 All Statuses
               </option>
 
               <option value="DRAFT">
-                DRAFT
+                Draft
               </option>
 
               <option value="PENDING_APPROVAL">
-                PENDING APPROVAL
+                Pending Approval
               </option>
 
               <option value="PUBLISHED">
-                PUBLISHED
+                Published
               </option>
 
               <option value="REJECTED">
-                REJECTED
+                Rejected
               </option>
 
               <option value="SOLD">
-                SOLD
+                Sold
               </option>
+
             </select>
+
           </div>
+
+
+          {/* RESULT */}
+
+          <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
+
+            <span>
+              {loading
+                ? "Loading..."
+                : `${filteredProperties.length} ${
+                    filteredProperties.length ===
+                    1
+                      ? "property"
+                      : "properties"
+                  } found`}
+            </span>
+
+            {statusFilter !==
+              "ALL" && (
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 font-bold text-blue-600">
+                {statusFilter.replaceAll(
+                  "_",
+                  " "
+                )}
+              </span>
+            )}
+
+          </div>
+
         </div>
 
-        {/* ==========================================
-            STATS
-        ========================================== */}
+      </section>
 
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
-          {/* Total */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <Building2 className="text-blue-600" />
+      {/* ==========================================
+          CONTENT
+      ========================================== */}
 
-              <div>
-                <p className="text-sm text-slate-500">
-                  Total Properties
-                </p>
+      {loading ? (
 
-                <p className="text-2xl font-bold text-slate-900">
-                  {properties.length}
-                </p>
-              </div>
+        <div className="flex min-h-72 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+          <div className="text-center">
+
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50">
+
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+
             </div>
+
+            <p className="mt-4 text-sm font-semibold text-slate-700">
+              Loading properties...
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Please wait a moment.
+            </p>
+
           </div>
 
-          {/* Pending */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <RefreshCw className="text-yellow-600" />
-
-              <div>
-                <p className="text-sm text-slate-500">
-                  Pending Approval
-                </p>
-
-                <p className="text-2xl font-bold text-slate-900">
-                  {
-                    properties.filter(
-                      (property) =>
-                        property.status ===
-                        "PENDING_APPROVAL"
-                    ).length
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Published */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="text-green-600" />
-
-              <div>
-                <p className="text-sm text-slate-500">
-                  Published
-                </p>
-
-                <p className="text-2xl font-bold text-slate-900">
-                  {
-                    properties.filter(
-                      (property) =>
-                        property.status === "PUBLISHED"
-                    ).length
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Rejected */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <XCircle className="text-red-600" />
-
-              <div>
-                <p className="text-sm text-slate-500">
-                  Rejected
-                </p>
-
-                <p className="text-2xl font-bold text-slate-900">
-                  {
-                    properties.filter(
-                      (property) =>
-                        property.status === "REJECTED"
-                    ).length
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* ==========================================
-            LOADING
-        ========================================== */}
+      ) : filteredProperties.length ===
+        0 ? (
 
-        {loading ? (
-          <div className="flex min-h-60 items-center justify-center rounded-2xl border border-slate-200 bg-white">
-            <div className="text-center">
-              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
+        /* ========================================
+           EMPTY STATE
+        ======================================== */
 
-              <p className="text-sm text-slate-500">
-                Loading properties...
-              </p>
+        <div className="flex min-h-80 items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+          <div className="max-w-md">
+
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+
+              <Building2
+                size={30}
+                className="text-slate-400"
+              />
+
             </div>
-          </div>
-        ) : filteredProperties.length === 0 ? (
-          /* ==========================================
-             EMPTY
-          ========================================== */
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-            <Building2
-              size={42}
-              className="mx-auto mb-4 text-slate-300"
-            />
-
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="mt-5 text-xl font-bold tracking-tight text-slate-900">
               No properties found
             </h3>
 
-            <p className="mt-2 text-sm text-slate-500">
-              No properties match your search or status
-              filter.
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              No properties match your current search or status filter.
             </p>
-          </div>
-        ) : (
-          /* ==========================================
-             PROPERTY GRID
-          ========================================== */
 
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredProperties.map((property) => (
-              <div
-                key={property.id}
-                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md"
+            {activeFilter && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="
+                  mt-5
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  px-5
+                  py-3
+                  text-sm
+                  font-semibold
+                  text-slate-700
+                  transition
+
+                  hover:bg-slate-50
+                "
               >
+                Clear Filters
+              </button>
+            )}
 
-                {/* Image */}
-                <div className="h-52 bg-slate-100">
-                  {property.images?.length > 0 ? (
-                    <img
-                      src={property.images[0]}
-                      alt={property.title || "Property"}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <Building2
-                        size={42}
-                        className="text-slate-300"
+          </div>
+
+        </div>
+
+      ) : (
+
+        /* ========================================
+           PROPERTY GRID
+        ======================================== */
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+
+          {filteredProperties.map(
+            (property) => {
+
+              const statusMeta =
+                getStatusMeta(
+                  property.status
+                );
+
+              const StatusIcon =
+                statusMeta.icon;
+
+              const imageUrl =
+                Array.isArray(
+                  property.images
+                ) &&
+                property.images.length >
+                  0
+                  ? property.images[0]
+                  : null;
+
+              const isActionLoading =
+                actionLoading ===
+                property.id;
+
+              return (
+                <article
+                  key={property.id}
+                  className="
+                    group
+                    flex
+                    h-full
+                    flex-col
+                    overflow-hidden
+                    rounded-2xl
+                    border
+                    border-slate-200
+                    bg-white
+                    shadow-sm
+                    transition-all
+                    duration-300
+
+                    hover:-translate-y-1
+                    hover:border-slate-300
+                    hover:shadow-lg
+                  "
+                >
+
+                  {/* ==================================
+                      IMAGE
+                  ================================== */}
+
+                  <div className="relative h-48 overflow-hidden bg-slate-100 sm:h-52">
+
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={
+                          property.title ||
+                          "Property"
+                        }
+                        loading="lazy"
+                        className="
+                          h-full
+                          w-full
+                          object-cover
+                          transition-transform
+                          duration-500
+
+                          group-hover:scale-105
+                        "
                       />
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center">
 
-                <div className="p-5">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
 
-                  {/* Title + Status */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="truncate font-bold text-slate-900">
-                        {property.title ||
-                          "Untitled Property"}
-                      </h2>
+                          <Building2
+                            size={27}
+                            className="text-slate-300"
+                          />
 
-                      <div className="mt-2 flex items-center gap-1 text-sm text-slate-500">
-                        <MapPin size={15} />
+                        </div>
 
-                        <span className="truncate">
-                          {property.areaName ||
-                            "Unknown Area"}
-                          ,{" "}
-                          {property.city ||
-                            "Unknown City"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                        property.status
-                      )}`}
-                    >
-                      {property.status?.replaceAll(
-                        "_",
-                        " "
-                      )}
-                    </span>
-                  </div>
-
-                  {/* Price */}
-                  <div className="mt-5 flex items-center gap-1 text-lg font-bold text-slate-900">
-                    <IndianRupee size={18} />
-
-                    <span>
-                      {formatPrice(property.price).replace(
-                        "₹",
-                        ""
-                      )}
-                    </span>
-                  </div>
-
-                  {/* Details */}
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-
-                    <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs text-slate-400">
-                        BHK
-                      </p>
-
-                      <p className="mt-1 font-semibold text-slate-900">
-                        {property.bhk || "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs text-slate-400">
-                        Area
-                      </p>
-
-                      <p className="mt-1 font-semibold text-slate-900">
-                        {property.area
-                          ? `${property.area} sq.ft`
-                          : "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs text-slate-400">
-                        Type
-                      </p>
-
-                      <p className="mt-1 font-semibold text-slate-900">
-                        {property.propertyType || "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg bg-slate-50 p-3">
-                      <p className="text-xs text-slate-400">
-                        Property ID
-                      </p>
-
-                      <p className="mt-1 font-semibold text-slate-900">
-                        #{property.id}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  {property.description && (
-                    <p className="mt-4 line-clamp-2 text-sm text-slate-500">
-                      {property.description}
-                    </p>
-                  )}
-
-                  {/* =====================================
-                      ACTIONS
-                  ===================================== */}
-
-                  <div className="mt-5">
-
-                    {property.status ===
-                      "PENDING_APPROVAL" && (
-                      <div className="flex gap-3">
-
-                        <button
-                          onClick={() =>
-                            handleApprove(property.id)
-                          }
-                          disabled={
-                            actionLoading === property.id
-                          }
-                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <CheckCircle size={17} />
-
-                          {actionLoading === property.id
-                            ? "Processing..."
-                            : "Approve"}
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            openRejectModal(property)
-                          }
-                          disabled={
-                            actionLoading === property.id
-                          }
-                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <XCircle size={17} />
-                          Reject
-                        </button>
-                      </div>
-                    )}
-
-                    {property.status === "PUBLISHED" && (
-                      <div className="flex items-center justify-center gap-2 rounded-xl bg-green-50 p-3 text-sm font-semibold text-green-700">
-                        <CheckCircle size={17} />
-                        Property is live
-                      </div>
-                    )}
-
-                    {property.status === "REJECTED" && (
-                      <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                        <p className="font-semibold">
-                          Property rejected
+                        <p className="mt-3 text-xs font-medium text-slate-400">
+                          No image available
                         </p>
 
-                        {property.rejectionReason && (
-                          <p className="mt-1">
-                            Reason:{" "}
-                            {property.rejectionReason}
-                          </p>
-                        )}
                       </div>
                     )}
 
-                    {property.status === "DRAFT" && (
-                      <div className="rounded-xl bg-slate-50 p-3 text-center text-sm font-medium text-slate-500">
-                        Draft property
-                      </div>
-                    )}
 
-                    {property.status === "SOLD" && (
-                      <div className="rounded-xl bg-purple-50 p-3 text-center text-sm font-semibold text-purple-700">
-                        Property sold
-                      </div>
-                    )}
+                    {/* STATUS */}
+
+                    <span
+                      className={`
+                        absolute
+                        left-3
+                        top-3
+                        inline-flex
+                        items-center
+                        gap-1.5
+                        rounded-full
+                        px-3
+                        py-1.5
+                        text-[10px]
+                        font-bold
+                        uppercase
+                        tracking-wide
+                        shadow-sm
+                        ${statusMeta.className}
+                      `}
+                    >
+                      <StatusIcon size={13} />
+
+                      {statusMeta.label}
+
+                    </span>
+
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+
+                  {/* ==================================
+                      CONTENT
+                  ================================== */}
+
+                  <div className="flex flex-1 flex-col p-4 sm:p-5">
+
+                    {/* TITLE */}
+
+                    <h2 className="line-clamp-2 min-h-12 text-base font-bold leading-6 tracking-tight text-slate-900 sm:text-lg">
+                      {property.title ||
+                        "Untitled Property"}
+                    </h2>
+
+
+                    {/* LOCATION */}
+
+                    <div className="mt-2 flex items-start gap-2 text-sm text-slate-500">
+
+                      <MapPin
+                        size={15}
+                        className="mt-0.5 shrink-0 text-slate-400"
+                      />
+
+                      <span className="line-clamp-2 leading-5">
+                        {property.areaName ||
+                          "Unknown Area"}
+                        {property.areaName &&
+                          property.city
+                          ? ", "
+                          : ""}
+                        {property.city ||
+                          "Unknown City"}
+                      </span>
+
+                    </div>
+
+
+                    {/* PRICE */}
+
+                    <div className="mt-4 flex items-center gap-1.5">
+
+                      <IndianRupee
+                        size={18}
+                        className="text-slate-500"
+                      />
+
+                      <span className="text-xl font-bold tracking-tight text-slate-900">
+                        {formatPrice(
+                          property.price
+                        ).replace(
+                          "₹",
+                          ""
+                        )}
+                      </span>
+
+                    </div>
+
+
+                    {/* PROPERTY DETAILS */}
+
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+
+                      <InfoBox
+                        label="BHK"
+                        value={
+                          property.bhk ??
+                          "—"
+                        }
+                      />
+
+                      <InfoBox
+                        label="Area"
+                        value={
+                          property.area
+                            ? `${property.area} sq.ft`
+                            : "—"
+                        }
+                      />
+
+                      <InfoBox
+                        label="Type"
+                        value={
+                          property.propertyType ||
+                          "—"
+                        }
+                      />
+
+                      <InfoBox
+                        label="ID"
+                        value={`#${property.id}`}
+                      />
+
+                    </div>
+
+
+                    {/* DESCRIPTION */}
+
+                    {property.description && (
+                      <p className="mt-4 line-clamp-2 text-xs leading-5 text-slate-500">
+                        {property.description}
+                      </p>
+                    )}
+
+
+                    {/* ==================================
+                        ACTIONS
+                    ================================== */}
+
+                    <div className="mt-auto space-y-2.5 pt-5">
+
+                      {/* VIEW */}
+
+                      <Link
+                        to={`/properties/${property.id}`}
+                        className="
+                          flex
+                          min-h-10
+                          w-full
+                          items-center
+                          justify-center
+                          gap-2
+                          rounded-xl
+                          border
+                          border-slate-200
+                          bg-white
+                          px-4
+                          py-2.5
+                          text-sm
+                          font-semibold
+                          text-slate-700
+                          transition
+
+                          hover:bg-slate-50
+                          hover:text-slate-900
+
+                          active:scale-[0.98]
+                        "
+                      >
+
+                        <Eye size={16} />
+
+                        View Property
+
+                        <ArrowRight
+                          size={15}
+                          className="text-slate-400"
+                        />
+
+                      </Link>
+
+
+                      {/* PENDING */}
+
+                      {property.status ===
+                        "PENDING_APPROVAL" && (
+                        <div className="grid grid-cols-2 gap-2">
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleApprove(
+                                property.id
+                              )
+                            }
+                            disabled={
+                              isActionLoading
+                            }
+                            className="
+                              inline-flex
+                              min-h-10
+                              items-center
+                              justify-center
+                              gap-1.5
+                              rounded-xl
+                              bg-emerald-600
+                              px-3
+                              py-2.5
+                              text-xs
+                              font-semibold
+                              text-white
+                              transition
+
+                              hover:bg-emerald-700
+
+                              active:scale-[0.98]
+
+                              disabled:cursor-not-allowed
+                              disabled:opacity-50
+
+                              sm:text-sm
+                            "
+                          >
+
+                            {isActionLoading ? (
+                              <RefreshCw
+                                size={15}
+                                className="animate-spin"
+                              />
+                            ) : (
+                              <CheckCircle
+                                size={15}
+                              />
+                            )}
+
+                            {isActionLoading
+                              ? "Processing..."
+                              : "Approve"}
+
+                          </button>
+
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openRejectModal(
+                                property
+                              )
+                            }
+                            disabled={
+                              isActionLoading
+                            }
+                            className="
+                              inline-flex
+                              min-h-10
+                              items-center
+                              justify-center
+                              gap-1.5
+                              rounded-xl
+                              bg-red-600
+                              px-3
+                              py-2.5
+                              text-xs
+                              font-semibold
+                              text-white
+                              transition
+
+                              hover:bg-red-700
+
+                              active:scale-[0.98]
+
+                              disabled:cursor-not-allowed
+                              disabled:opacity-50
+
+                              sm:text-sm
+                            "
+                          >
+
+                            <XCircle
+                              size={15}
+                            />
+
+                            Reject
+
+                          </button>
+
+                        </div>
+                      )}
+
+
+                      {/* PUBLISHED */}
+
+                      {property.status ===
+                        "PUBLISHED" && (
+                        <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700">
+
+                          <CheckCircle
+                            size={15}
+                          />
+
+                          Property is live
+
+                        </div>
+                      )}
+
+
+                      {/* REJECTED */}
+
+                      {property.status ===
+                        "REJECTED" && (
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+
+                          <div className="flex items-center gap-2 text-xs font-bold text-red-700">
+
+                            <XCircle
+                              size={15}
+                            />
+
+                            Property Rejected
+
+                          </div>
+
+                          {property.rejectionReason && (
+                            <p className="mt-1.5 text-xs leading-5 text-red-600">
+                              {property.rejectionReason}
+                            </p>
+                          )}
+
+                        </div>
+                      )}
+
+
+                      {/* DRAFT */}
+
+                      {property.status ===
+                        "DRAFT" && (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center text-xs font-semibold text-slate-500">
+                          Draft property
+                        </div>
+                      )}
+
+
+                      {/* SOLD */}
+
+                      {property.status ===
+                        "SOLD" && (
+                        <div className="flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs font-semibold text-violet-700">
+
+                          <CheckCircle
+                            size={15}
+                          />
+
+                          Property Sold
+
+                        </div>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                </article>
+              );
+            }
+          )}
+
+        </div>
+
+      )}
+
 
       {/* ==========================================
           REJECT MODAL
       ========================================== */}
 
-      {showRejectModal && selectedProperty && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+      {showRejectModal &&
+        selectedProperty && (
+          <div
+            className="
+              fixed
+              inset-0
+              z-[100]
+              flex
+              items-center
+              justify-center
+              bg-black/50
+              p-4
+              backdrop-blur-[2px]
+            "
+            onClick={closeRejectModal}
+          >
 
-            <h2 className="text-xl font-bold text-slate-900">
-              Reject Property
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Enter the reason for rejecting this property.
-            </p>
-
-            <div className="mt-3 rounded-xl bg-slate-50 p-3">
-              <p className="text-sm font-semibold text-slate-900">
-                {selectedProperty.title}
-              </p>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Property ID: #{selectedProperty.id}
-              </p>
-            </div>
-
-            <textarea
-              rows="4"
-              value={rejectionReason}
-              onChange={(e) =>
-                setRejectionReason(e.target.value)
+            <div
+              className="
+                w-full
+                max-w-md
+                overflow-hidden
+                rounded-2xl
+                bg-white
+                shadow-2xl
+              "
+              onClick={(event) =>
+                event.stopPropagation()
               }
-              placeholder="Enter rejection reason..."
-              className="mt-5 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-500"
-            />
+            >
 
-            <div className="mt-5 flex gap-3">
+              {/* MODAL HEADER */}
 
-              <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setSelectedProperty(null);
-                  setRejectionReason("");
-                  setError("");
-                }}
-                className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancel
-              </button>
+              <div className="border-b border-slate-200 p-5 sm:p-6">
 
-              <button
-                onClick={handleReject}
-                disabled={
-                  actionLoading === selectedProperty.id
-                }
-                className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
-              >
-                {actionLoading === selectedProperty.id
-                  ? "Rejecting..."
-                  : "Reject Property"}
-              </button>
+                <div className="flex items-start gap-3">
+
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                    <XCircle size={20} />
+                  </div>
+
+                  <div>
+
+                    <h2 className="text-lg font-bold text-slate-900">
+                      Reject Property
+                    </h2>
+
+                    <p className="mt-1 text-sm leading-5 text-slate-500">
+                      Provide a clear reason for rejecting this listing.
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              {/* MODAL BODY */}
+
+              <div className="p-5 sm:p-6">
+
+                <div className="rounded-xl bg-slate-50 p-4">
+
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    Property
+                  </p>
+
+                  <p className="mt-1 text-sm font-bold text-slate-900">
+                    {selectedProperty.title ||
+                      "Untitled Property"}
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Property ID: #
+                    {selectedProperty.id}
+                  </p>
+
+                </div>
+
+
+                <label
+                  htmlFor="rejection-reason"
+                  className="mt-5 block text-sm font-semibold text-slate-700"
+                >
+                  Rejection Reason
+                </label>
+
+                <textarea
+                  id="rejection-reason"
+                  rows={5}
+                  value={
+                    rejectionReason
+                  }
+                  onChange={(event) =>
+                    setRejectionReason(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Enter the reason for rejection..."
+                  className="
+                    mt-2
+                    w-full
+                    resize-y
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-white
+                    px-4
+                    py-3
+                    text-sm
+                    leading-6
+                    text-slate-800
+                    shadow-sm
+                    outline-none
+                    transition
+
+                    placeholder:text-slate-400
+
+                    hover:border-slate-400
+
+                    focus:border-slate-500
+                    focus:ring-4
+                    focus:ring-slate-100
+                  "
+                />
+
+                <p className="mt-2 text-xs text-slate-400">
+                  A rejection reason will be visible to the seller.
+                </p>
+
+
+                {/* MODAL ACTIONS */}
+
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+
+                  <button
+                    type="button"
+                    onClick={
+                      closeRejectModal
+                    }
+                    disabled={
+                      actionLoading !==
+                      null
+                    }
+                    className="
+                      min-h-11
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-white
+                      px-4
+                      py-3
+                      text-sm
+                      font-semibold
+                      text-slate-700
+                      transition
+
+                      hover:bg-slate-50
+
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                    "
+                  >
+                    Cancel
+                  </button>
+
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleReject
+                    }
+                    disabled={
+                      actionLoading ===
+                      selectedProperty.id
+                    }
+                    className="
+                      inline-flex
+                      min-h-11
+                      items-center
+                      justify-center
+                      gap-2
+                      rounded-xl
+                      bg-red-600
+                      px-4
+                      py-3
+                      text-sm
+                      font-semibold
+                      text-white
+                      transition
+
+                      hover:bg-red-700
+
+                      active:scale-[0.98]
+
+                      disabled:cursor-not-allowed
+                      disabled:opacity-50
+                    "
+                  >
+
+                    {actionLoading ===
+                    selectedProperty.id ? (
+                      <>
+                        <RefreshCw
+                          size={16}
+                          className="animate-spin"
+                        />
+
+                        Rejecting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle
+                          size={16}
+                        />
+
+                        Reject Property
+                      </>
+                    )}
+
+                  </button>
+
+                </div>
+
+              </div>
+
             </div>
+
           </div>
+        )}
+
+    </div>
+  );
+}
+
+
+// ==========================================
+// STAT CARD
+// ==========================================
+
+function StatCard({
+  label,
+  value,
+  description,
+  icon: Icon,
+  iconClass = "",
+  valueClass = "text-slate-900",
+}) {
+  return (
+    <div
+      className="
+        group
+        rounded-2xl
+        border
+        border-slate-200
+        bg-white
+        p-4
+        shadow-sm
+        transition-all
+        duration-200
+
+        hover:-translate-y-0.5
+        hover:border-slate-300
+        hover:shadow-md
+
+        sm:p-5
+      "
+    >
+
+      <div className="flex items-start justify-between gap-3">
+
+        <div className="min-w-0">
+
+          <p className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-400 sm:text-xs">
+            {label}
+          </p>
+
+          <p
+            className={`
+              mt-2
+              text-2xl
+              font-bold
+              tracking-tight
+              sm:text-3xl
+              ${valueClass}
+            `}
+          >
+            {value}
+          </p>
+
+          <p className="mt-1 line-clamp-1 text-[11px] text-slate-400 sm:text-xs">
+            {description}
+          </p>
+
         </div>
-      )}
+
+
+        <div
+          className={`
+            flex
+            h-10
+            w-10
+            shrink-0
+            items-center
+            justify-center
+            rounded-xl
+            transition-transform
+            duration-200
+
+            group-hover:scale-105
+
+            sm:h-11
+            sm:w-11
+
+            ${iconClass}
+          `}
+        >
+          <Icon size={19} />
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// ==========================================
+// INFO BOX
+// ==========================================
+
+function InfoBox({
+  label,
+  value,
+}) {
+  return (
+    <div className="min-w-0 rounded-xl bg-slate-50 p-3">
+
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-1 truncate text-xs font-bold text-slate-700 sm:text-sm">
+        {value}
+      </p>
+
     </div>
   );
 }
