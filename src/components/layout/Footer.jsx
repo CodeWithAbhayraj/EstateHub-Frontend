@@ -44,6 +44,7 @@ function Footer() {
 
           </div>
 
+
           {/* QUICK LINKS */}
 
           <div>
@@ -86,7 +87,8 @@ function Footer() {
 
           </div>
 
-          {/* FOR USERS */}
+
+          {/* PLATFORM */}
 
           <div>
 
@@ -116,6 +118,7 @@ function Footer() {
 
           </div>
 
+
           {/* CONTACT */}
 
           <div>
@@ -126,6 +129,8 @@ function Footer() {
 
             <div className="mt-4 space-y-4">
 
+              {/* EMAIL */}
+
               <div className="flex items-start gap-3">
 
                 <Mail
@@ -133,11 +138,17 @@ function Footer() {
                   className="mt-0.5 shrink-0 text-slate-500"
                 />
 
-                <span className="text-sm text-slate-500">
-                  support@estatehub.com
-                </span>
+                <a
+                  href="mailto:abhaykonge41@gmail.com"
+                  className="text-sm text-slate-500 transition hover:text-slate-900"
+                >
+                  abhaykonge41@gmail.com
+                </a>
 
               </div>
+
+
+              {/* MOBILE */}
 
               <div className="flex items-start gap-3">
 
@@ -146,11 +157,17 @@ function Footer() {
                   className="mt-0.5 shrink-0 text-slate-500"
                 />
 
-                <span className="text-sm text-slate-500">
-                  +91 00000 00000
-                </span>
+                <a
+                  href="tel:+918855803608"
+                  className="text-sm text-slate-500 transition hover:text-slate-900"
+                >
+                  +91 8855803608
+                </a>
 
               </div>
+
+
+              {/* LOCATION */}
 
               <div className="flex items-start gap-3">
 
@@ -170,6 +187,7 @@ function Footer() {
           </div>
 
         </div>
+
 
         {/* ==========================================
             BOTTOM
