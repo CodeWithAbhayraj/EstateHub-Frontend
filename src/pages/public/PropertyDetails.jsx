@@ -25,6 +25,7 @@ import {
   removeFavorite,
 } from "../../api/favoriteApi";
 
+import PropertyGallery from "../../components/property/PropertyGallery";
 import LeadForm from "../../components/lead/LeadForm";
 import VisitForm from "../../components/visit/VisitForm";
 
@@ -42,7 +43,9 @@ function PropertyDetails() {
   let user = null;
 
   try {
-    user = savedUser ? JSON.parse(savedUser) : null;
+    user = savedUser
+      ? JSON.parse(savedUser)
+      : null;
   } catch (error) {
     console.error("Invalid user data:", error);
   }
@@ -55,16 +58,27 @@ function PropertyDetails() {
   const isBuyer = role === "BUYER";
   const isSeller = role === "SELLER";
   const isAdmin =
-    role === "ADMIN" || role === "SUPER_ADMIN";
+    role === "ADMIN" ||
+    role === "SUPER_ADMIN";
+
+  const currentUserId =
+    user?.id ??
+    user?.userId ??
+    null;
 
   // ==========================================
   // STATES
   // ==========================================
 
-  const [property, setProperty] = useState(null);
-  const [favorite, setFavorite] = useState(false);
+  const [property, setProperty] =
+    useState(null);
 
-  const [loading, setLoading] = useState(true);
+  const [favorite, setFavorite] =
+    useState(false);
+
+  const [loading, setLoading] =
+    useState(true);
+
   const [favoriteLoading, setFavoriteLoading] =
     useState(false);
 
@@ -74,14 +88,20 @@ function PropertyDetails() {
   const [showVisitForm, setShowVisitForm] =
     useState(false);
 
-  const [leadId, setLeadId] = useState(null);
+  const [leadId, setLeadId] =
+    useState(null);
 
-  const [leadSuccess, setLeadSuccess] = useState("");
-  const [visitSuccess, setVisitSuccess] = useState("");
-  const [error, setError] = useState("");
+  const [leadSuccess, setLeadSuccess] =
+    useState("");
+
+  const [visitSuccess, setVisitSuccess] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
 
   // ==========================================
-  // LOAD PROPERTY
+  // FETCH PROPERTY
   // ==========================================
 
   useEffect(() => {
@@ -90,15 +110,12 @@ function PropertyDetails() {
         setLoading(true);
         setError("");
 
-        const data = await getPropertyById(id);
+        const data =
+          await getPropertyById(id);
 
         setProperty(data);
 
-        // ======================================
-        // FAVORITE STATUS
-        // ONLY BUYER
-        // ======================================
-
+        // Buyer only
         if (isBuyer) {
           try {
             const favoriteStatus =
@@ -148,12 +165,62 @@ function PropertyDetails() {
       return "Price on request";
     }
 
-    return `₹${Number(price).toLocaleString("en-IN")}`;
+    return `₹${Number(
+      price
+    ).toLocaleString("en-IN")}`;
   };
 
   // ==========================================
+  // STATUS
+  // ==========================================
+
+  const formatStatus = (status) => {
+    if (!status) {
+      return "";
+    }
+
+    return String(status)
+      .replaceAll("_", " ");
+  };
+
+  // ==========================================
+  // PROPERTY STATE
+  // ==========================================
+
+  const propertyStatus =
+    property?.status;
+
+  const isDraft =
+    propertyStatus === "DRAFT";
+
+  const isPending =
+    propertyStatus ===
+    "PENDING_APPROVAL";
+
+  const isPublished =
+    propertyStatus === "PUBLISHED";
+
+  const isRejected =
+    propertyStatus === "REJECTED";
+
+  // ==========================================
+  // OWNER
+  // ==========================================
+
+  const propertySellerId =
+    property?.sellerId ??
+    property?.seller?.id ??
+    null;
+
+  const isOwnProperty =
+    isSeller &&
+    propertySellerId !== null &&
+    currentUserId !== null &&
+    String(propertySellerId) ===
+      String(currentUserId);
+
+  // ==========================================
   // FAVORITE
-  // BUYER ONLY
   // ==========================================
 
   const handleFavorite = async () => {
@@ -188,10 +255,12 @@ function PropertyDetails() {
   };
 
   // ==========================================
-  // LEAD SUCCESS
+  // LEAD
   // ==========================================
 
-  const handleLeadSuccess = (response) => {
+  const handleLeadSuccess = (
+    response
+  ) => {
     const createdLeadId =
       response?.id ??
       response?.leadId ??
@@ -207,20 +276,38 @@ function PropertyDetails() {
         "Your enquiry has been submitted successfully."
     );
 
+    setError("");
     setShowLeadForm(false);
   };
 
   // ==========================================
-  // VISIT SUCCESS
+  // VISIT
   // ==========================================
 
-  const handleVisitSuccess = (response) => {
+  const handleVisitSuccess = (
+    response
+  ) => {
     setVisitSuccess(
       response?.message ||
         "Your property visit has been scheduled successfully."
     );
 
+    setError("");
     setShowVisitForm(false);
+  };
+
+  // ==========================================
+  // OPEN LEAD FORM
+  // ==========================================
+
+  const openLeadForm = () => {
+    if (!isBuyer) {
+      return;
+    }
+
+    setLeadSuccess("");
+    setError("");
+    setShowLeadForm(true);
   };
 
   // ==========================================
@@ -228,12 +315,12 @@ function PropertyDetails() {
   // ==========================================
 
   const openVisitForm = () => {
-    setVisitSuccess("");
-    setError("");
-
     if (!isBuyer) {
       return;
     }
+
+    setVisitSuccess("");
+    setError("");
 
     if (!leadId) {
       setError(
@@ -241,7 +328,6 @@ function PropertyDetails() {
       );
 
       setShowLeadForm(true);
-
       return;
     }
 
@@ -254,9 +340,19 @@ function PropertyDetails() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-lg font-medium text-slate-600">
-          Loading property...
+      <div className="min-h-screen bg-slate-50">
+        <div className="flex min-h-[70vh] items-center justify-center px-4">
+          <div className="text-center">
+
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+            </div>
+
+            <p className="mt-4 text-sm font-medium text-slate-500">
+              Loading property...
+            </p>
+
+          </div>
         </div>
       </div>
     );
@@ -268,21 +364,36 @@ function PropertyDetails() {
 
   if (error && !property) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-md">
+      <div className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-4">
 
-          <p className="mb-4 text-red-600">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
+            <Home
+              size={26}
+              className="text-red-500"
+            />
+          </div>
+
+          <h1 className="mt-5 text-xl font-bold text-slate-900">
+            Property unavailable
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
             {error}
           </p>
 
           <button
-            onClick={() => window.history.back()}
-            className="rounded-xl bg-slate-900 px-5 py-3 text-white"
+            type="button"
+            onClick={() => navigate(-1)}
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
+            <ArrowLeft size={17} />
             Go Back
           </button>
 
         </div>
+
       </div>
     );
   }
@@ -291,224 +402,139 @@ function PropertyDetails() {
     return null;
   }
 
-  // ==========================================
-  // PROPERTY STATUS
-  // ==========================================
-
-  const propertyStatus =
-    property.status
-      ?.replaceAll("_", " ")
-      ?.toUpperCase();
-
-  const isDraft =
-    property.status === "DRAFT";
-
-  const isPending =
-    property.status === "PENDING_APPROVAL";
-
-  const isPublished =
-    property.status === "PUBLISHED";
-
-  // ==========================================
-  // SELLER OWNERSHIP
-  // ==========================================
-
-  const propertySellerId =
-    property.sellerId ??
-    property.seller?.id ??
-    null;
-
-  const currentUserId =
-    user?.userId ??
-    user?.id ??
-    null;
-
-  const isOwnProperty =
-    isSeller &&
-    propertySellerId !== null &&
-    currentUserId !== null &&
-    String(propertySellerId) ===
-      String(currentUserId);
-
   return (
     <div className="min-h-screen bg-slate-50">
 
       {/* ==========================================
-          HEADER
+          TOP BAR
       ========================================== */}
 
-      <div className="border-b border-slate-200 bg-white">
+      <header className="border-b border-slate-200 bg-white">
 
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
 
           <button
-            onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
           >
             <ArrowLeft size={18} />
-            Back to Properties
+            <span className="hidden xs:inline">
+              Back
+            </span>
+            <span className="sm:hidden">
+              Back
+            </span>
           </button>
 
-        </div>
-
-      </div>
-
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-
-        {/* ==========================================
-            SUCCESS MESSAGES
-        ========================================== */}
-
-        {leadSuccess && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-700">
-
-            <CheckCircle size={20} />
-
-            <span>{leadSuccess}</span>
-
-          </div>
-        )}
-
-        {visitSuccess && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-700">
-
-            <CalendarDays size={20} />
-
-            <span>{visitSuccess}</span>
-
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-600">
-            {error}
-          </div>
-        )}
-
-        {/* ==========================================
-            PROPERTY GALLERY
-        ========================================== */}
-
-        <div className="mb-8 overflow-hidden rounded-3xl bg-white shadow-sm">
-
-          <div className="relative h-[420px] bg-slate-100">
-
-            {property.images?.length > 0 ? (
-              <img
-                src={property.images[0]}
-                alt={
-                  property.title ||
-                  "Property"
-                }
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-
-                <div className="text-center text-slate-400">
-
-                  <Home
-                    size={48}
-                    className="mx-auto mb-3"
-                  />
-
-                  <p>
-                    No Image Available
-                  </p>
-
-                </div>
-
-              </div>
-            )}
-
-            {/* ======================================
-                FAVORITE
-                BUYER ONLY
-            ====================================== */}
-
-            {isBuyer && (
-              <button
-                onClick={handleFavorite}
-                disabled={favoriteLoading}
-                className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg transition hover:scale-105 disabled:opacity-50"
-                aria-label="Toggle favorite"
-              >
-                <Heart
-                  size={22}
-                  className={
-                    favorite
-                      ? "fill-red-500 text-red-500"
-                      : "text-slate-700"
-                  }
-                />
-              </button>
-            )}
-
-            {/* ======================================
-                STATUS
-            ====================================== */}
-
-            {property.status && (
-              <span className="absolute left-5 top-5 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-                {propertyStatus}
+          {isOwnProperty && (
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  `/seller/properties/${property.id}/edit`
+                )
+              }
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              <Edit size={16} />
+              <span className="hidden sm:inline">
+                Edit Property
               </span>
-            )}
-
-          </div>
-
-          {/* ==========================================
-              ADDITIONAL IMAGES
-          ========================================== */}
-
-          {property.images?.length > 1 && (
-            <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-
-              {property.images
-                .slice(1, 5)
-                .map((image, index) => (
-                  <img
-                    key={index}
-                    src={image}
-                    alt={`${property.title || "Property"} ${index + 2}`}
-                    className="h-24 w-full rounded-xl object-cover"
-                  />
-                ))}
-
-            </div>
+              <span className="sm:hidden">
+                Edit
+              </span>
+            </button>
           )}
 
         </div>
 
+      </header>
+
+
+      {/* ==========================================
+          MAIN
+      ========================================== */}
+
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+
         {/* ==========================================
-            MAIN GRID
+            ALERTS
         ========================================== */}
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        {leadSuccess && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            <CheckCircle
+              size={19}
+              className="mt-0.5 shrink-0"
+            />
+            <span>{leadSuccess}</span>
+          </div>
+        )}
 
-          {/* ==========================================
-              MAIN CONTENT
-          ========================================== */}
+        {visitSuccess && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            <CalendarDays
+              size={19}
+              className="mt-0.5 shrink-0"
+            />
+            <span>{visitSuccess}</span>
+          </div>
+        )}
 
-          <div className="lg:col-span-2">
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-600">
+            {error}
+          </div>
+        )}
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
+
+        {/* ==========================================
+            GALLERY
+        ========================================== */}
+
+        <PropertyGallery
+          images={property.images}
+          title={
+            property.title ||
+            "Property"
+          }
+        />
+
+
+        {/* ==========================================
+            DETAILS + SIDEBAR
+        ========================================== */}
+
+        <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
+
+          {/* ========================================
+              PROPERTY CONTENT
+          ======================================== */}
+
+          <section className="min-w-0">
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
 
               {/* TITLE */}
 
-              <div className="mb-6">
+              <div className="flex flex-col gap-4">
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 
-                  <div>
+                  <div className="min-w-0">
 
-                    <h1 className="text-3xl font-bold text-slate-900">
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
                       {property.title ||
                         "Untitled Property"}
                     </h1>
 
-                    <div className="mt-3 flex items-center gap-2 text-slate-500">
+                    <div className="mt-3 flex items-start gap-2 text-sm text-slate-500 sm:text-base">
 
-                      <MapPin size={18} />
+                      <MapPin
+                        size={18}
+                        className="mt-0.5 shrink-0 text-slate-400"
+                      />
 
                       <span>
                         {property.areaName ||
@@ -522,248 +548,273 @@ function PropertyDetails() {
 
                   </div>
 
-                  {/* SELLER EDIT */}
 
-                  {isOwnProperty && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/seller/properties/${property.id}/edit`
-                        )
-                      }
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  {property.status && (
+                    <span
+                      className={`
+                        w-fit
+                        shrink-0
+                        rounded-full
+                        px-3
+                        py-1.5
+                        text-[11px]
+                        font-bold
+                        uppercase
+                        tracking-wide
+
+                        ${
+                          isPublished
+                            ? "bg-green-50 text-green-700"
+                            : isPending
+                            ? "bg-amber-50 text-amber-700"
+                            : isRejected
+                            ? "bg-red-50 text-red-700"
+                            : isDraft
+                            ? "bg-slate-100 text-slate-600"
+                            : "bg-slate-100 text-slate-600"
+                        }
+                      `}
                     >
-                      <Edit size={17} />
-                      Edit Property
-                    </button>
+                      {formatStatus(
+                        property.status
+                      )}
+                    </span>
                   )}
+
+                </div>
+
+
+                {/* PRICE */}
+
+                <div className="flex items-center gap-1.5">
+
+                  <IndianRupee
+                    size={23}
+                    className="text-green-600"
+                  />
+
+                  <span className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    {formatPrice(
+                      property.price
+                    )}
+                  </span>
 
                 </div>
 
               </div>
 
-              {/* PRICE */}
 
-              <div className="mb-8 flex items-center gap-2">
+              {/* ==================================
+                  QUICK DETAILS
+              ================================== */}
 
-                <IndianRupee
-                  size={26}
-                  className="text-green-600"
-                />
-
-                <span className="text-3xl font-bold text-slate-900">
-                  {formatPrice(property.price)}
-                </span>
-
-              </div>
-
-              {/* FEATURES */}
-
-              <div className="grid gap-4 border-y border-slate-200 py-6 sm:grid-cols-4">
+              <div className="mt-7 grid grid-cols-2 gap-3 border-y border-slate-200 py-6 sm:grid-cols-4 sm:gap-4">
 
                 {property.bhk !== null &&
                   property.bhk !== undefined && (
-                    <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-slate-50 p-3.5 sm:p-4">
 
                       <BedDouble
-                        size={22}
+                        size={19}
                         className="text-blue-600"
                       />
 
-                      <div>
+                      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        BHK
+                      </p>
 
-                        <p className="text-xs text-slate-400">
-                          BHK
-                        </p>
-
-                        <p className="font-semibold">
-                          {property.bhk}
-                        </p>
-
-                      </div>
+                      <p className="mt-1 text-sm font-bold text-slate-800 sm:text-base">
+                        {property.bhk}
+                      </p>
 
                     </div>
                   )}
+
 
                 {property.area !== null &&
                   property.area !== undefined && (
-                    <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-slate-50 p-3.5 sm:p-4">
 
                       <Ruler
-                        size={22}
+                        size={19}
                         className="text-blue-600"
                       />
 
-                      <div>
+                      <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        Area
+                      </p>
 
-                        <p className="text-xs text-slate-400">
-                          Area
-                        </p>
-
-                        <p className="font-semibold">
-                          {property.area} sq.ft
-                        </p>
-
-                      </div>
+                      <p className="mt-1 text-sm font-bold text-slate-800 sm:text-base">
+                        {property.area} sq.ft
+                      </p>
 
                     </div>
                   )}
 
+
                 {property.propertyType && (
-                  <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-slate-50 p-3.5 sm:p-4">
 
                     <Home
-                      size={22}
+                      size={19}
                       className="text-blue-600"
                     />
 
-                    <div>
+                    <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      Type
+                    </p>
 
-                      <p className="text-xs text-slate-400">
-                        Property Type
-                      </p>
-
-                      <p className="font-semibold">
-                        {property.propertyType}
-                      </p>
-
-                    </div>
+                    <p className="mt-1 truncate text-sm font-bold text-slate-800 sm:text-base">
+                      {property.propertyType}
+                    </p>
 
                   </div>
                 )}
 
-                <div className="flex items-center gap-3">
+
+                <div className="rounded-xl bg-slate-50 p-3.5 sm:p-4">
 
                   <Car
-                    size={22}
+                    size={19}
                     className="text-blue-600"
                   />
 
-                  <div>
+                  <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Parking
+                  </p>
 
-                    <p className="text-xs text-slate-400">
-                      Parking
-                    </p>
-
-                    <p className="font-semibold">
-                      {property.parking
-                        ? "Available"
-                        : "No"}
-                    </p>
-
-                  </div>
+                  <p className="mt-1 text-sm font-bold text-slate-800 sm:text-base">
+                    {property.parking
+                      ? "Available"
+                      : "No"}
+                  </p>
 
                 </div>
 
               </div>
 
-              {/* DESCRIPTION */}
 
-              <div className="mt-8">
+              {/* ==================================
+                  DESCRIPTION
+              ================================== */}
 
-                <h2 className="mb-4 text-xl font-bold text-slate-900">
+              <section className="mt-8">
+
+                <h2 className="text-xl font-bold text-slate-900">
                   Description
                 </h2>
 
-                <p className="leading-7 text-slate-600">
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600 sm:text-base">
                   {property.description ||
                     "No description available for this property."}
                 </p>
 
-              </div>
+              </section>
 
-              {/* PROPERTY DETAILS */}
 
-              <div className="mt-8">
+              {/* ==================================
+                  PROPERTY DETAILS
+              ================================== */}
 
-                <h2 className="mb-4 text-xl font-bold text-slate-900">
+              <section className="mt-9">
+
+                <h2 className="text-xl font-bold text-slate-900">
                   Property Details
                 </h2>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
 
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-400">
-                      Furnished
-                    </p>
+                  <DetailItem
+                    label="Furnished"
+                    value={
+                      property.furnished ||
+                      "Not specified"
+                    }
+                  />
 
-                    <p className="mt-1 font-semibold">
-                      {property.furnished ||
-                        "Not specified"}
-                    </p>
-                  </div>
+                  <DetailItem
+                    label="Facing"
+                    value={
+                      property.facing ||
+                      "Not specified"
+                    }
+                  />
 
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-400">
-                      Facing
-                    </p>
-
-                    <p className="mt-1 font-semibold">
-                      {property.facing ||
-                        "Not specified"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-400">
-                      Ready To Move
-                    </p>
-
-                    <p className="mt-1 font-semibold">
-                      {property.readyToMove
+                  <DetailItem
+                    label="Ready To Move"
+                    value={
+                      property.readyToMove
                         ? "Yes"
-                        : "No"}
-                    </p>
-                  </div>
+                        : "No"
+                    }
+                  />
 
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-400">
-                      New Project
-                    </p>
-
-                    <p className="mt-1 font-semibold">
-                      {property.newProject
+                  <DetailItem
+                    label="New Project"
+                    value={
+                      property.newProject
                         ? "Yes"
-                        : "No"}
-                    </p>
-                  </div>
+                        : "No"
+                    }
+                  />
 
-                  <div className="rounded-xl bg-slate-50 p-4">
-                    <p className="text-sm text-slate-400">
-                      Resale
-                    </p>
-
-                    <p className="mt-1 font-semibold">
-                      {property.resale
+                  <DetailItem
+                    label="Resale"
+                    value={
+                      property.resale
                         ? "Yes"
-                        : "No"}
-                    </p>
-                  </div>
+                        : "No"
+                    }
+                  />
 
                 </div>
 
-              </div>
+              </section>
+
+
+              {/* ==================================
+                  REJECTION
+              ================================== */}
+
+              {isRejected &&
+                property.rejectionReason && (
+                  <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-4">
+
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-red-500">
+                      Rejection Reason
+                    </p>
+
+                    <p className="mt-2 text-sm leading-6 text-red-700">
+                      {property.rejectionReason}
+                    </p>
+
+                  </div>
+                )}
 
             </div>
 
-          </div>
+          </section>
 
-          {/* ==========================================
-              RIGHT SIDEBAR
-          ========================================== */}
 
-          <div>
+          {/* ========================================
+              SIDEBAR
+          ======================================== */}
 
-            {isBuyer ? (
-              <div className="sticky top-6 rounded-3xl bg-white p-6 shadow-sm">
+          <aside className="min-w-0">
 
-                <div className="mb-5 flex items-center gap-3">
+            {/* ======================================
+                BUYER
+            ====================================== */}
 
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+            {isBuyer && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:sticky lg:top-24">
+
+                <div className="flex items-start gap-3">
+
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
 
                     <ShieldCheck
-                      size={24}
+                      size={22}
                       className="text-blue-600"
                     />
 
@@ -775,46 +826,87 @@ function PropertyDetails() {
                       Interested in this property?
                     </h3>
 
-                    <p className="text-sm text-slate-500">
-                      Contact our agent
+                    <p className="mt-1 text-sm leading-5 text-slate-500">
+                      Connect with our agent to know more.
                     </p>
 
                   </div>
 
                 </div>
 
+
+                {/* FAVORITE */}
+
                 <button
-                  onClick={() => {
-                    setLeadSuccess("");
-                    setError("");
-                    setShowLeadForm(true);
-                  }}
-                  className="mb-3 w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
+                  type="button"
+                  onClick={
+                    handleFavorite
+                  }
+                  disabled={
+                    favoriteLoading
+                  }
+                  className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+
+                  <Heart
+                    size={18}
+                    className={
+                      favorite
+                        ? "fill-red-500 text-red-500"
+                        : "text-slate-600"
+                    }
+                  />
+
+                  {favorite
+                    ? "Saved to Favorites"
+                    : "Save to Favorites"}
+
+                </button>
+
+
+                {/* CONTACT */}
+
+                <button
+                  type="button"
+                  onClick={
+                    openLeadForm
+                  }
+                  className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 hover:shadow-md"
                 >
                   Contact Agent
                 </button>
 
+
+                {/* VISIT */}
+
                 <button
-                  onClick={openVisitForm}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-800 transition hover:bg-slate-50"
+                  type="button"
+                  onClick={
+                    openVisitForm
+                  }
+                  className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
+                  <CalendarDays size={17} />
                   Schedule Visit
                 </button>
 
+
+                {/* LEAD STATUS */}
+
                 {leadId && (
-                  <div className="mt-5 rounded-xl bg-green-50 p-4">
+                  <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4">
 
                     <div className="flex items-center gap-2 text-green-700">
 
                       <CheckCircle size={18} />
 
-                      <span className="text-sm font-medium">
+                      <span className="text-sm font-semibold">
                         Enquiry submitted
                       </span>
 
                     </div>
 
-                    <p className="mt-1 text-xs text-green-600">
+                    <p className="mt-1 text-xs leading-5 text-green-600">
                       You can now schedule a property visit.
                     </p>
 
@@ -822,197 +914,281 @@ function PropertyDetails() {
                 )}
 
               </div>
-            ) : (
-              <div className="sticky top-6 rounded-3xl bg-white p-6 shadow-sm">
+            )}
 
-                {isSeller && (
-                  <>
-                    <p className="text-sm font-semibold text-slate-500">
-                      Seller Property
-                    </p>
 
-                    <p className="mt-2 text-lg font-bold text-slate-900">
-                      {isDraft
-                        ? "Draft Property"
-                        : isPending
-                        ? "Pending Approval"
-                        : isPublished
-                        ? "Published Property"
-                        : propertyStatus}
-                    </p>
+            {/* ======================================
+                SELLER
+            ====================================== */}
 
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                      Manage your property from the Seller Dashboard.
-                    </p>
+            {isSeller && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:sticky lg:top-24">
 
-                    {isOwnProperty && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigate(
-                            `/seller/properties/${property.id}/edit`
-                          )
-                        }
-                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
-                      >
-                        <Edit size={17} />
-                        Edit Property
-                      </button>
-                    )}
-                  </>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                  Seller Property
+                </p>
+
+                <h3 className="mt-2 text-lg font-bold text-slate-900">
+                  {isDraft
+                    ? "Draft Property"
+                    : isPending
+                    ? "Pending Approval"
+                    : isPublished
+                    ? "Published Property"
+                    : isRejected
+                    ? "Rejected Property"
+                    : "Property"}
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Manage your property from the Seller Dashboard.
+                </p>
+
+                {isOwnProperty && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/seller/properties/${property.id}/edit`
+                      )
+                    }
+                    className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    <Edit size={17} />
+                    Edit Property
+                  </button>
                 )}
 
-                {isAdmin && (
-                  <>
-                    <p className="text-sm font-semibold text-slate-500">
-                      Administration
-                    </p>
+                {isDraft &&
+                  isOwnProperty && (
+                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
 
-                    <p className="mt-2 text-lg font-bold text-slate-900">
-                      Property Management
-                    </p>
+                      <p className="text-xs font-semibold leading-5 text-amber-700">
+                        Upload at least 5 images and submit this property for approval.
+                      </p>
 
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                      Use the Admin Dashboard to verify and manage this property.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate("/admin/properties")
-                      }
-                      className="mt-5 w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
-                    >
-                      Manage Properties
-                    </button>
-                  </>
-                )}
-
-                {!token && (
-                  <>
-                    <p className="text-sm font-semibold text-slate-500">
-                      Interested in this property?
-                    </p>
-
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                      Login as a Buyer to save properties,
-                      contact the agent and schedule visits.
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() => navigate("/login")}
-                      className="mt-5 w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800"
-                    >
-                      Login as Buyer
-                    </button>
-                  </>
-                )}
+                    </div>
+                  )}
 
               </div>
             )}
 
-          </div>
+
+            {/* ======================================
+                ADMIN
+            ====================================== */}
+
+            {isAdmin && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:sticky lg:top-24">
+
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                  Administration
+                </p>
+
+                <h3 className="mt-2 text-lg font-bold text-slate-900">
+                  Property Management
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Review and manage this property from the Admin Dashboard.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      "/admin/properties"
+                    )
+                  }
+                  className="mt-5 flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Manage Property
+                </button>
+
+              </div>
+            )}
+
+
+            {/* ======================================
+                GUEST
+            ====================================== */}
+
+            {!token && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:sticky lg:top-24">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
+
+                  <Home
+                    size={21}
+                    className="text-slate-600"
+                  />
+
+                </div>
+
+                <h3 className="mt-4 text-lg font-bold text-slate-900">
+                  Interested in this property?
+                </h3>
+
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Login as a Buyer to save this property, contact the agent and schedule a visit.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/login")
+                  }
+                  className="mt-5 flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Login as Buyer
+                </button>
+
+              </div>
+            )}
+
+          </aside>
 
         </div>
 
-      </div>
+      </main>
+
 
       {/* ==========================================
-          BUYER LEAD MODAL
+          LEAD MODAL
       ========================================== */}
 
-      {isBuyer && showLeadForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      {isBuyer &&
+        showLeadForm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
 
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
 
-            <button
-              onClick={() =>
-                setShowLeadForm(false)
-              }
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="pr-10">
-
-              <h2 className="text-2xl font-bold text-slate-900">
-                Contact Agent
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Send your enquiry for this property.
-              </p>
-
-            </div>
-
-            <div className="mt-6">
-
-              <LeadForm
-                propertyId={id}
-                onSuccess={handleLeadSuccess}
-                onClose={() =>
-                  setShowLeadForm(false)
+              <button
+                type="button"
+                onClick={() =>
+                  setShowLeadForm(
+                    false
+                  )
                 }
-              />
+                className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900"
+                aria-label="Close lead form"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="pr-10">
+
+                <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
+                  Contact Agent
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Send your enquiry for this property.
+                </p>
+
+              </div>
+
+              <div className="mt-6">
+
+                <LeadForm
+                  propertyId={id}
+                  onSuccess={
+                    handleLeadSuccess
+                  }
+                  onClose={() =>
+                    setShowLeadForm(
+                      false
+                    )
+                  }
+                />
+
+              </div>
 
             </div>
 
           </div>
+        )}
 
-        </div>
-      )}
 
       {/* ==========================================
-          BUYER VISIT MODAL
+          VISIT MODAL
       ========================================== */}
 
-      {isBuyer && showVisitForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      {isBuyer &&
+        showVisitForm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
 
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
 
-            <button
-              onClick={() =>
-                setShowVisitForm(false)
-              }
-              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="pr-10">
-
-              <h2 className="text-2xl font-bold text-slate-900">
-                Schedule Property Visit
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Choose your preferred date and time.
-              </p>
-
-            </div>
-
-            <div className="mt-6">
-
-              <VisitForm
-                propertyId={id}
-                leadId={leadId}
-                onSuccess={handleVisitSuccess}
-                onClose={() =>
-                  setShowVisitForm(false)
+              <button
+                type="button"
+                onClick={() =>
+                  setShowVisitForm(
+                    false
+                  )
                 }
-              />
+                className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900"
+                aria-label="Close visit form"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="pr-10">
+
+                <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
+                  Schedule Property Visit
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Choose your preferred date and time.
+                </p>
+
+              </div>
+
+              <div className="mt-6">
+
+                <VisitForm
+                  propertyId={id}
+                  leadId={leadId}
+                  onSuccess={
+                    handleVisitSuccess
+                  }
+                  onClose={() =>
+                    setShowVisitForm(
+                      false
+                    )
+                  }
+                />
+
+              </div>
 
             </div>
 
           </div>
+        )}
 
-        </div>
-      )}
+    </div>
+  );
+}
 
+
+// ==========================================
+// DETAIL ITEM
+// ==========================================
+
+function DetailItem({
+  label,
+  value,
+}) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-slate-800">
+        {value}
+      </p>
     </div>
   );
 }
