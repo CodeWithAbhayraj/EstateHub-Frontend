@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Bell, Check, CheckCheck } from "lucide-react";
+
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  RefreshCw,
+  ArrowRight,
+} from "lucide-react";
 
 import {
   getMyNotifications,
@@ -8,24 +15,53 @@ import {
 } from "../../api/notificationApi";
 
 function Notifications() {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [notifications, setNotifications] =
+    useState([]);
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
+  const [loading, setLoading] =
+    useState(true);
 
-  const loadNotifications = async () => {
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [actionLoading, setActionLoading] =
+    useState(null);
+
+  const [markAllLoading, setMarkAllLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  // ==========================================
+  // LOAD NOTIFICATIONS
+  // ==========================================
+
+  const loadNotifications = async (
+    showFullLoader = true
+  ) => {
     try {
-      setLoading(true);
+      if (showFullLoader) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
       setError("");
 
-      const data = await getMyNotifications();
+      const data =
+        await getMyNotifications();
 
-      setNotifications(Array.isArray(data) ? data : []);
+      setNotifications(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (err) {
-      console.error("Notifications error:", err);
+      console.error(
+        "Notifications error:",
+        err
+      );
 
       setError(
         err.response?.data?.message ||
@@ -33,176 +69,652 @@ function Notifications() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleMarkAsRead = async (id) => {
+  // ==========================================
+  // INITIAL LOAD
+  // ==========================================
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  // ==========================================
+  // REFRESH
+  // ==========================================
+
+  const handleRefresh = async () => {
+    await loadNotifications(false);
+  };
+
+  // ==========================================
+  // MARK ONE AS READ
+  // ==========================================
+
+  const handleMarkAsRead = async (
+    id
+  ) => {
     try {
+      setActionLoading(id);
+      setError("");
+
       await markNotificationAsRead(id);
 
       setNotifications((prev) =>
         prev.map((notification) =>
           notification.id === id
-            ? { ...notification, isRead: true }
+            ? {
+                ...notification,
+                isRead: true,
+              }
             : notification
         )
       );
     } catch (err) {
-      console.error("Mark notification error:", err);
+      console.error(
+        "Mark notification error:",
+        err
+      );
 
       setError(
         err.response?.data?.message ||
           "Unable to mark notification as read."
       );
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleMarkAllAsRead = async () => {
+  // ==========================================
+  // MARK ALL AS READ
+  // ==========================================
+
+  const handleMarkAllAsRead =
+    async () => {
+      try {
+        setMarkAllLoading(true);
+        setError("");
+
+        await markAllNotificationsAsRead();
+
+        setNotifications((prev) =>
+          prev.map(
+            (notification) => ({
+              ...notification,
+              isRead: true,
+            })
+          )
+        );
+      } catch (err) {
+        console.error(
+          "Mark all notifications error:",
+          err
+        );
+
+        setError(
+          err.response?.data?.message ||
+            "Unable to mark notifications as read."
+        );
+      } finally {
+        setMarkAllLoading(false);
+      }
+    };
+
+  // ==========================================
+  // UNREAD COUNT
+  // ==========================================
+
+  const unreadCount =
+    notifications.filter(
+      (notification) =>
+        !notification.isRead
+    ).length;
+
+  // ==========================================
+  // FORMAT TYPE
+  // ==========================================
+
+  const formatType = (type) => {
+    if (!type) {
+      return "NOTIFICATION";
+    }
+
+    return String(type).replaceAll(
+      "_",
+      " "
+    );
+  };
+
+  // ==========================================
+  // FORMAT DATE
+  // ==========================================
+
+  const formatDate = (date) => {
+    if (!date) {
+      return "";
+    }
+
     try {
-      await markAllNotificationsAsRead();
-
-      setNotifications((prev) =>
-        prev.map((notification) => ({
-          ...notification,
-          isRead: true,
-        }))
-      );
-    } catch (err) {
-      console.error("Mark all notifications error:", err);
-
-      setError(
-        err.response?.data?.message ||
-          "Unable to mark notifications as read."
-      );
+      return new Date(
+        date
+      ).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
     }
   };
 
-  const unreadCount = notifications.filter(
-    (notification) => !notification.isRead
-  ).length;
+  // ==========================================
+  // LOADING
+  // ==========================================
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-slate-500">Loading notifications...</p>
+      <div className="min-h-[60vh] w-full">
+        <div className="flex min-h-[60vh] items-center justify-center">
+
+          <div className="text-center">
+
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+
+            </div>
+
+            <p className="mt-4 text-sm font-semibold text-slate-700">
+              Loading notifications...
+            </p>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Please wait a moment.
+            </p>
+
+          </div>
+
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="border-b bg-white">
-        <div className="mx-auto max-w-4xl px-6 py-8">
-          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
-                <Bell size={26} />
+    <div className="w-full">
+
+      {/* ==========================================
+          HEADER
+      ========================================== */}
+
+      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+        <div className="relative p-5 sm:p-7 lg:p-8">
+
+          {/* Background decoration */}
+
+          <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-blue-50 blur-3xl" />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+            {/* TITLE */}
+
+            <div className="flex min-w-0 items-start gap-3">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <Bell size={21} />
               </div>
 
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">
+              <div className="min-w-0">
+
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-600">
+                  Buyer
+                </p>
+
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                   Notifications
                 </h1>
 
-                <p className="mt-1 text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-slate-500 sm:text-base">
                   Stay updated about your activities.
                 </p>
+
               </div>
+
             </div>
 
-            {unreadCount > 0 && (
+
+            {/* ACTIONS */}
+
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+
+              {/* REFRESH */}
+
               <button
-                onClick={handleMarkAllAsRead}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-700 hover:bg-slate-50"
+                type="button"
+                onClick={handleRefresh}
+                disabled={
+                  refreshing
+                }
+                className="
+                  inline-flex
+                  min-h-11
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  px-4
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-slate-700
+                  shadow-sm
+                  transition
+
+                  hover:bg-slate-50
+
+                  active:scale-[0.98]
+
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+
+                  sm:w-auto
+                "
               >
-                <CheckCheck size={18} />
-                Mark All as Read
+                <RefreshCw
+                  size={16}
+                  className={
+                    refreshing
+                      ? "animate-spin"
+                      : ""
+                  }
+                />
+
+                Refresh
               </button>
-            )}
+
+
+              {/* MARK ALL */}
+
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={
+                    handleMarkAllAsRead
+                  }
+                  disabled={
+                    markAllLoading
+                  }
+                  className="
+                    inline-flex
+                    min-h-11
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    bg-slate-900
+                    px-4
+                    py-2.5
+                    text-sm
+                    font-semibold
+                    text-white
+                    shadow-sm
+                    transition
+
+                    hover:bg-slate-800
+
+                    active:scale-[0.98]
+
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
+
+                    sm:w-auto
+                  "
+                >
+                  <CheckCheck
+                    size={17}
+                  />
+
+                  {markAllLoading
+                    ? "Updating..."
+                    : "Mark All as Read"}
+                </button>
+              )}
+
+            </div>
+
           </div>
+
         </div>
-      </div>
 
-      <main className="mx-auto max-w-4xl px-6 py-8">
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+      </section>
 
-        {notifications.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
-            <Bell size={48} className="mx-auto text-slate-300" />
 
-            <h2 className="mt-4 text-xl font-bold text-slate-900">
+      {/* ==========================================
+          ERROR
+      ========================================== */}
+
+      {error && (
+        <div
+          className="
+            mb-6
+            rounded-2xl
+            border
+            border-red-200
+            bg-red-50
+            p-4
+            text-sm
+            font-medium
+            leading-5
+            text-red-600
+          "
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+
+      {/* ==========================================
+          SUMMARY
+      ========================================== */}
+
+      {notifications.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+            Activity
+          </span>
+
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {notifications.length} total
+          </span>
+
+          {unreadCount > 0 && (
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600">
+              {unreadCount} unread
+            </span>
+          )}
+
+        </div>
+      )}
+
+
+      {/* ==========================================
+          EMPTY STATE
+      ========================================== */}
+
+      {notifications.length === 0 ? (
+
+        <div className="flex min-h-[380px] items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+          <div className="max-w-md">
+
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+
+              <Bell
+                size={30}
+                className="text-blue-400"
+              />
+
+            </div>
+
+            <h2 className="mt-5 text-xl font-bold tracking-tight text-slate-900">
               No notifications
             </h2>
 
-            <p className="mt-2 text-slate-500">
-              You don't have any notifications yet.
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              You don't have any notifications yet. New activity will appear here.
             </p>
+
           </div>
-        ) : (
-          <div className="space-y-4">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`rounded-2xl border p-5 shadow-sm ${
-                  notification.isRead
-                    ? "border-slate-200 bg-white"
-                    : "border-blue-200 bg-blue-50"
-                }`}
-              >
-                <div className="flex gap-4">
-                  <div
-                    className={`mt-1 rounded-full p-2 ${
-                      notification.isRead
-                        ? "bg-slate-100 text-slate-500"
-                        : "bg-blue-100 text-blue-600"
-                    }`}
-                  >
-                    <Bell size={18} />
-                  </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-col justify-between gap-2 sm:flex-row">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          {notification.type}
-                        </p>
+        </div>
 
-                        <p className="mt-1 text-sm font-medium text-slate-900">
-                          {notification.message}
-                        </p>
-                      </div>
+      ) : (
 
-                      {!notification.isRead && (
-                        <button
-                          onClick={() =>
-                            handleMarkAsRead(notification.id)
-                          }
-                          className="inline-flex h-fit items-center justify-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
-                        >
-                          <Check size={16} />
-                          Mark Read
-                        </button>
-                      )}
+        /* ==========================================
+           NOTIFICATION LIST
+        ========================================== */
+
+        <div className="space-y-3">
+
+          {notifications.map(
+            (notification) => {
+
+              const unread =
+                !notification.isRead;
+
+              const actionLoadingForItem =
+                actionLoading ===
+                notification.id;
+
+              return (
+                <article
+                  key={notification.id}
+                  className={`
+                    rounded-2xl
+                    border
+                    p-4
+                    shadow-sm
+                    transition-all
+                    duration-200
+                    sm:p-5
+
+                    ${
+                      unread
+                        ? "border-blue-200 bg-blue-50/60"
+                        : "border-slate-200 bg-white"
+                    }
+                  `}
+                >
+
+                  <div className="flex items-start gap-3 sm:gap-4">
+
+                    {/* ICON */}
+
+                    <div
+                      className={`
+                        flex
+                        h-10
+                        w-10
+                        shrink-0
+                        items-center
+                        justify-center
+                        rounded-xl
+
+                        ${
+                          unread
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-slate-100 text-slate-500"
+                        }
+                      `}
+                    >
+                      <Bell size={18} />
                     </div>
 
-                    {notification.createdAt && (
-                      <p className="mt-3 text-xs text-slate-400">
-                        {new Date(
-                          notification.createdAt
-                        ).toLocaleString("en-IN")}
-                      </p>
-                    )}
+
+                    {/* CONTENT */}
+
+                    <div className="min-w-0 flex-1">
+
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+
+                        <div className="min-w-0">
+
+                          {/* TYPE */}
+
+                          <div className="flex flex-wrap items-center gap-2">
+
+                            <span
+                              className={`
+                                text-[10px]
+                                font-bold
+                                uppercase
+                                tracking-[0.12em]
+
+                                ${
+                                  unread
+                                    ? "text-blue-600"
+                                    : "text-slate-400"
+                                }
+                              `}
+                            >
+                              {formatType(
+                                notification.type
+                              )}
+                            </span>
+
+                            {unread && (
+                              <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                                New
+                              </span>
+                            )}
+
+                          </div>
+
+
+                          {/* MESSAGE */}
+
+                          <p
+                            className={`
+                              mt-2
+                              text-sm
+                              leading-6
+                              ${
+                                unread
+                                  ? "font-semibold text-slate-900"
+                                  : "font-medium text-slate-700"
+                              }
+                            `}
+                          >
+                            {notification.message ||
+                              "You have a new notification."}
+                          </p>
+
+                        </div>
+
+
+                        {/* MARK READ */}
+
+                        {unread && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleMarkAsRead(
+                                notification.id
+                              )
+                            }
+                            disabled={
+                              actionLoadingForItem
+                            }
+                            className="
+                              inline-flex
+                              min-h-10
+                              w-full
+                              shrink-0
+                              items-center
+                              justify-center
+                              gap-2
+                              rounded-xl
+                              border
+                              border-blue-200
+                              bg-white
+                              px-3
+                              py-2
+                              text-xs
+                              font-semibold
+                              text-blue-600
+                              transition
+
+                              hover:bg-blue-50
+
+                              active:scale-[0.98]
+
+                              disabled:cursor-not-allowed
+                              disabled:opacity-50
+
+                              sm:w-auto
+                            "
+                          >
+
+                            {actionLoadingForItem ? (
+                              <>
+                                <RefreshCw
+                                  size={14}
+                                  className="animate-spin"
+                                />
+
+                                Updating...
+                              </>
+                            ) : (
+                              <>
+                                <Check
+                                  size={15}
+                                />
+
+                                Mark Read
+                              </>
+                            )}
+
+                          </button>
+                        )}
+
+                      </div>
+
+
+                      {/* DATE */}
+
+                      {notification.createdAt && (
+                        <p className="mt-3 text-xs font-medium text-slate-400">
+                          {formatDate(
+                            notification.createdAt
+                          )}
+                        </p>
+                      )}
+
+                    </div>
+
                   </div>
-                </div>
-              </div>
-            ))}
+
+                </article>
+              );
+            }
+          )}
+
+        </div>
+
+      )}
+
+
+      {/* ==========================================
+          BOTTOM INFO
+      ========================================== */}
+
+      {notifications.length > 0 &&
+        unreadCount === 0 && (
+          <div className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 text-xs font-semibold text-green-700">
+
+            <CheckCheck size={16} />
+
+            You're all caught up.
+
+            <ArrowRight
+              size={14}
+              className="opacity-60"
+            />
+
           </div>
         )}
-      </main>
+
     </div>
   );
 }

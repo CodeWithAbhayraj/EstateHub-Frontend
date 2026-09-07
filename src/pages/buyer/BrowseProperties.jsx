@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
+
+import {
+  Search,
+  SlidersHorizontal,
+  RefreshCw,
+} from "lucide-react";
 
 import { getPublishedProperties } from "../../api/propertyApi";
 
@@ -14,10 +19,14 @@ import PropertyFilter from "../../components/property/PropertyFilter";
 import PropertyGrid from "../../components/property/PropertyGrid";
 
 function BrowseProperties() {
-  const [properties, setProperties] = useState([]);
-  const [favoriteIds, setFavoriteIds] = useState([]);
+  const [properties, setProperties] =
+    useState([]);
 
-  const [searchText, setSearchText] = useState("");
+  const [favoriteIds, setFavoriteIds] =
+    useState([]);
+
+  const [searchText, setSearchText] =
+    useState("");
 
   const [filters, setFilters] = useState({
     cityId: "",
@@ -25,15 +34,24 @@ function BrowseProperties() {
     propertyTypeId: "",
   });
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  const [refreshing, setRefreshing] =
+    useState(false);
 
   // ==========================================
   // AUTH / ROLE
   // ==========================================
 
-  const token = localStorage.getItem("token");
-  const savedUser = localStorage.getItem("user");
+  const token =
+    localStorage.getItem("token");
+
+  const savedUser =
+    localStorage.getItem("user");
 
   let user = null;
 
@@ -42,7 +60,10 @@ function BrowseProperties() {
       ? JSON.parse(savedUser)
       : null;
   } catch (err) {
-    console.error("Invalid user data:", err);
+    console.error(
+      "Invalid user data:",
+      err
+    );
   }
 
   const role = user?.role
@@ -50,37 +71,32 @@ function BrowseProperties() {
     ?.trim()
     ?.toUpperCase();
 
-  const isBuyer = role === "BUYER";
-
-  // ==========================================
-  // LOAD DATA
-  // ==========================================
-
-  useEffect(() => {
-    loadProperties();
-
-    // Favorites API is BUYER-only
-    if (isBuyer) {
-      loadFavorites();
-    } else {
-      setFavoriteIds([]);
-    }
-  }, [isBuyer]);
+  const isBuyer =
+    role === "BUYER";
 
   // ==========================================
   // LOAD PROPERTIES
   // ==========================================
 
-  const loadProperties = async () => {
+  const loadProperties = async (
+    showFullLoader = true
+  ) => {
     try {
-      setLoading(true);
+      if (showFullLoader) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
       setError("");
 
       const data =
         await getPublishedProperties();
 
       setProperties(
-        Array.isArray(data) ? data : []
+        Array.isArray(data)
+          ? data
+          : []
       );
     } catch (err) {
       console.error(
@@ -94,14 +110,20 @@ function BrowseProperties() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   // ==========================================
-  // LOAD BUYER FAVORITES
+  // LOAD FAVORITES
   // ==========================================
 
   const loadFavorites = async () => {
+    if (!isBuyer) {
+      setFavoriteIds([]);
+      return;
+    }
+
     try {
       const data =
         await getMyFavorites();
@@ -113,6 +135,8 @@ function BrowseProperties() {
               favorite.propertyId
           )
         );
+      } else {
+        setFavoriteIds([]);
       }
     } catch (err) {
       console.error(
@@ -126,13 +150,39 @@ function BrowseProperties() {
   };
 
   // ==========================================
+  // INITIAL LOAD
+  // ==========================================
+
+  useEffect(() => {
+    loadProperties();
+
+    if (isBuyer) {
+      loadFavorites();
+    } else {
+      setFavoriteIds([]);
+    }
+  }, [isBuyer]);
+
+  // ==========================================
+  // REFRESH
+  // ==========================================
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      loadProperties(false),
+      isBuyer
+        ? loadFavorites()
+        : Promise.resolve(),
+    ]);
+  };
+
+  // ==========================================
   // FAVORITE TOGGLE
   // ==========================================
 
   const handleFavorite = async (
     propertyId
   ) => {
-    // Only BUYER can manage favorites
     if (!isBuyer) {
       return;
     }
@@ -140,16 +190,21 @@ function BrowseProperties() {
     try {
       setError("");
 
-      if (
-        favoriteIds.includes(propertyId)
-      ) {
+      const isCurrentlyFavorite =
+        favoriteIds.includes(
+          propertyId
+        );
+
+      if (isCurrentlyFavorite) {
         await removeFavorite(
           propertyId
         );
 
         setFavoriteIds((prev) =>
           prev.filter(
-            (id) => id !== propertyId
+            (id) =>
+              String(id) !==
+              String(propertyId)
           )
         );
       } else {
@@ -187,21 +242,31 @@ function BrowseProperties() {
 
     return properties.filter(
       (property) => {
-
         // Search
         const matchesSearch =
           !search ||
-          property.title
-            ?.toLowerCase()
+          String(
+            property.title || ""
+          )
+            .toLowerCase()
             .includes(search) ||
-          property.city
-            ?.toLowerCase()
+
+          String(
+            property.city || ""
+          )
+            .toLowerCase()
             .includes(search) ||
-          property.areaName
-            ?.toLowerCase()
+
+          String(
+            property.areaName || ""
+          )
+            .toLowerCase()
             .includes(search) ||
-          property.propertyType
-            ?.toLowerCase()
+
+          String(
+            property.propertyType || ""
+          )
+            .toLowerCase()
             .includes(search);
 
         // City
@@ -248,46 +313,178 @@ function BrowseProperties() {
     filters,
   ]);
 
+  // ==========================================
+  // ACTIVE FILTER COUNT
+  // ==========================================
+
+  const activeFilterCount = [
+    filters.cityId,
+    filters.areaId,
+    filters.propertyTypeId,
+  ].filter(Boolean).length;
+
+  // ==========================================
+  // CLEAR SEARCH
+  // ==========================================
+
+  const clearSearch = () => {
+    setSearchText("");
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="w-full">
 
       {/* ==========================================
-          HEADER
+          PAGE HEADER
       ========================================== */}
 
-      <section className="border-b bg-white">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="relative p-5 sm:p-7 lg:p-8">
 
-          <div className="flex items-center gap-3">
+          {/* Background decoration */}
 
-            <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
-              <Search size={26} />
+          <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-blue-50 blur-3xl" />
+
+          <div className="pointer-events-none absolute -bottom-24 left-1/4 h-40 w-40 rounded-full bg-slate-50 blur-3xl" />
+
+          <div className="relative">
+
+            {/* HEADER */}
+
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+
+              <div className="flex min-w-0 items-start gap-3">
+
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Search size={21} />
+                </div>
+
+                <div className="min-w-0">
+
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-600">
+                    EstateHub
+                  </p>
+
+                  <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    Browse Properties
+                  </h1>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-500 sm:text-base">
+                    Find a property that fits your needs.
+                  </p>
+
+                </div>
+
+              </div>
+
+              {/* REFRESH */}
+
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={
+                  loading || refreshing
+                }
+                className="
+                  inline-flex
+                  min-h-11
+                  w-full
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-white
+                  px-4
+                  py-2.5
+                  text-sm
+                  font-semibold
+                  text-slate-700
+                  shadow-sm
+                  transition-all
+                  duration-200
+
+                  hover:border-slate-300
+                  hover:bg-slate-50
+                  hover:text-slate-900
+
+                  active:scale-[0.98]
+
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+
+                  sm:w-fit
+                "
+              >
+                <RefreshCw
+                  size={16}
+                  className={
+                    refreshing
+                      ? "animate-spin"
+                      : ""
+                  }
+                />
+
+                {refreshing
+                  ? "Refreshing..."
+                  : "Refresh"}
+              </button>
+
             </div>
 
-            <div>
 
-              <h1 className="text-3xl font-bold text-slate-900">
-                Browse Properties
-              </h1>
+            {/* SEARCH */}
 
-              <p className="mt-1 text-slate-500">
-                Find your perfect property on EstateHub.
-              </p>
+            <div className="mt-6">
+
+              <PropertySearch
+                value={searchText}
+                onChange={setSearchText}
+                onSearch={setSearchText}
+              />
 
             </div>
 
-          </div>
 
-          {/* SEARCH */}
+            {/* SEARCH META */}
 
-          <div className="mt-6">
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-slate-400 sm:text-sm">
 
-            <PropertySearch
-              value={searchText}
-              onChange={setSearchText}
-              onSearch={setSearchText}
-            />
+              <span>
+                {loading
+                  ? "Loading properties..."
+                  : `${filteredProperties.length} ${
+                      filteredProperties.length ===
+                      1
+                        ? "property"
+                        : "properties"
+                    } found`}
+              </span>
+
+              {activeFilterCount >
+                0 && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600">
+                  {activeFilterCount} filter
+                  {activeFilterCount > 1
+                    ? "s"
+                    : ""}{" "}
+                  active
+                </span>
+              )}
+
+              {searchText && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  Clear search
+                </button>
+              )}
+
+            </div>
 
           </div>
 
@@ -295,111 +492,169 @@ function BrowseProperties() {
 
       </section>
 
+
       {/* ==========================================
-          MAIN
+          ERROR
       ========================================== */}
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {error && (
+        <div
+          className="
+            mb-6
+            rounded-2xl
+            border
+            border-red-200
+            bg-red-50
+            p-4
+            text-sm
+            font-medium
+            leading-5
+            text-red-600
+          "
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
 
-        {/* ERROR */}
 
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-            {error}
-          </div>
-        )}
+      {/* ==========================================
+          CONTENT
+      ========================================== */}
 
-        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8">
 
-          {/* ==========================================
-              FILTER
-          ========================================== */}
+        {/* ========================================
+            FILTER
+        ======================================== */}
 
-          <aside>
+        <aside className="min-w-0">
 
-            <div className="mb-4 flex items-center gap-2 lg:hidden">
+          {/* MOBILE FILTER LABEL */}
 
-              <SlidersHorizontal size={20} />
+          <div className="mb-3 flex items-center justify-between lg:hidden">
 
-              <h2 className="font-bold text-slate-900">
-                Filters
-              </h2>
+            <div className="flex items-center gap-2">
 
-            </div>
-
-            <PropertyFilter
-              onFilterChange={setFilters}
-            />
-
-          </aside>
-
-          {/* ==========================================
-              PROPERTIES
-          ========================================== */}
-
-          <section>
-
-            <div className="mb-5 flex items-center justify-between">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+                <SlidersHorizontal
+                  size={17}
+                  className="text-slate-600"
+                />
+              </div>
 
               <div>
 
-                <h2 className="text-xl font-bold text-slate-900">
-                  Available Properties
+                <h2 className="text-sm font-bold text-slate-900">
+                  Filters
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  {loading
-                    ? "Loading..."
-                    : `${filteredProperties.length} properties found`}
+                <p className="text-xs text-slate-400">
+                  Refine your search
                 </p>
 
               </div>
 
             </div>
 
-            {/* ==========================================
-                LOADING
-            ========================================== */}
+            {activeFilterCount >
+              0 && (
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600">
+                {activeFilterCount}
+              </span>
+            )}
 
-            {loading ? (
+          </div>
 
-              <div className="flex min-h-80 items-center justify-center rounded-2xl border border-slate-200 bg-white">
+          <PropertyFilter
+            onFilterChange={
+              setFilters
+            }
+          />
 
-                <div className="text-center">
+        </aside>
 
-                  <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
 
-                  <p className="mt-4 text-sm text-slate-500">
-                    Loading properties...
-                  </p>
+        {/* ========================================
+            PROPERTY RESULTS
+        ======================================== */}
 
+        <section className="min-w-0">
+
+          {/* RESULTS HEADER */}
+
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+
+            <div>
+
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+                Properties
+              </p>
+
+              <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+                Available Properties
+              </h2>
+
+            </div>
+
+            {!loading && (
+              <p className="text-sm text-slate-500">
+                {filteredProperties.length}{" "}
+                {filteredProperties.length ===
+                1
+                  ? "result"
+                  : "results"}
+              </p>
+            )}
+
+          </div>
+
+
+          {/* ======================================
+              LOADING
+          ====================================== */}
+
+          {loading ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-10 shadow-sm sm:p-14">
+
+              <div className="flex flex-col items-center justify-center text-center">
+
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-50">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
                 </div>
+
+                <p className="mt-4 text-sm font-semibold text-slate-700">
+                  Loading properties...
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  Please wait a moment.
+                </p>
 
               </div>
 
-            ) : (
+            </div>
+          ) : (
 
-              <PropertyGrid
-                properties={
-                  filteredProperties
-                }
-                favoriteIds={
-                  favoriteIds
-                }
-                onFavorite={
-                  isBuyer
-                    ? handleFavorite
-                    : undefined
-                }
-              />
+            <PropertyGrid
+              properties={
+                filteredProperties
+              }
+              favoriteIds={
+                favoriteIds
+              }
+              onFavorite={
+                isBuyer
+                  ? handleFavorite
+                  : undefined
+              }
+            />
 
-            )}
+          )}
 
-          </section>
+        </section>
 
-        </div>
-
-      </main>
+      </div>
 
     </div>
   );
