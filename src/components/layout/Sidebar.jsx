@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 
-function Sidebar({ isOpen = true, onClose }) {
+function Sidebar({ isOpen = false, onClose }) {
   // ==========================================
   // AUTH DATA
   // ==========================================
@@ -48,22 +48,76 @@ function Sidebar({ isOpen = true, onClose }) {
   // NAV ITEM
   // ==========================================
 
-  const NavItem = ({ to, label, icon: Icon }) => (
+  const NavItem = ({
+    to,
+    label,
+    icon: Icon,
+  }) => (
     <NavLink
       to={to}
       onClick={onClose}
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+        `
+        group flex items-center gap-3
+        rounded-xl px-3 py-2.5
+        text-sm font-semibold
+        transition-all duration-200
+        ${
           isActive
-            ? "bg-slate-900 text-white"
+            ? "bg-slate-900 text-white shadow-sm"
             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-        }`
+        }
+        `
       }
     >
-      <Icon size={18} />
-      <span>{label}</span>
+      {({ isActive }) => (
+        <>
+          <span
+            className={`
+              flex h-9 w-9 shrink-0 items-center justify-center
+              rounded-lg transition
+              ${
+                isActive
+                  ? "bg-white/10 text-white"
+                  : "bg-slate-50 text-slate-500 group-hover:bg-white group-hover:text-slate-900"
+              }
+            `}
+          >
+            <Icon size={18} strokeWidth={2} />
+          </span>
+
+          <span className="truncate">
+            {label}
+          </span>
+        </>
+      )}
     </NavLink>
   );
+
+  // ==========================================
+  // SECTION TITLE
+  // ==========================================
+
+  const SectionTitle = ({ children }) => (
+    <p className="mb-2 px-3 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+      {children}
+    </p>
+  );
+
+  // ==========================================
+  // ROLE LABEL
+  // ==========================================
+
+  const roleLabel = role
+    ? role.replaceAll("_", " ")
+    : "USER";
+
+  // ==========================================
+  // USER INITIAL
+  // ==========================================
+
+  const userInitial =
+    name?.trim()?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <>
@@ -72,9 +126,11 @@ function Sidebar({ isOpen = true, onClose }) {
       ========================================== */}
 
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+        <button
+          type="button"
+          aria-label="Close sidebar"
           onClick={onClose}
+          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px] lg:hidden"
         />
       )}
 
@@ -84,11 +140,21 @@ function Sidebar({ isOpen = true, onClose }) {
 
       <aside
         className={`
-          fixed left-0 top-0 z-50
-          flex h-screen w-72 flex-col
-          border-r border-slate-200 bg-white
-          transition-transform duration-300
-          lg:sticky lg:top-0 lg:z-30 lg:translate-x-0
+          fixed inset-y-0 left-0 z-50
+          flex w-[280px] flex-col
+          border-r border-slate-200
+          bg-white
+          shadow-2xl
+          transition-transform duration-300 ease-out
+
+          lg:sticky
+          lg:top-0
+          lg:z-30
+          lg:h-screen
+          lg:w-72
+          lg:shrink-0
+          lg:shadow-none
+
           ${
             isOpen
               ? "translate-x-0"
@@ -96,29 +162,25 @@ function Sidebar({ isOpen = true, onClose }) {
           }
         `}
       >
-
         {/* ==========================================
             HEADER
         ========================================== */}
 
-        <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5">
-
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
-              <Building2 size={18} />
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+              <Building2 size={19} />
             </div>
 
-            <div>
-              <h2 className="font-bold text-slate-900">
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-bold text-slate-900">
                 EstateHub
               </h2>
 
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                {role || "USER"}
+              <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                {roleLabel}
               </p>
             </div>
-
           </div>
 
           {/* MOBILE CLOSE */}
@@ -126,30 +188,27 @@ function Sidebar({ isOpen = true, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 active:scale-95 lg:hidden"
             aria-label="Close menu"
           >
             <X size={19} />
           </button>
-
         </div>
 
         {/* ==========================================
             NAVIGATION
         ========================================== */}
 
-        <nav className="flex-1 overflow-y-auto p-4">
-
+        <nav className="flex-1 overflow-y-auto px-3 py-5">
           {/* ==========================================
               BUYER
           ========================================== */}
 
           {role === "BUYER" && (
             <div className="space-y-1">
-
-              <p className="mb-3 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+              <SectionTitle>
                 Buyer
-              </p>
+              </SectionTitle>
 
               <NavItem
                 to="/buyer/dashboard"
@@ -180,7 +239,6 @@ function Sidebar({ isOpen = true, onClose }) {
                 label="Notifications"
                 icon={Bell}
               />
-
             </div>
           )}
 
@@ -190,10 +248,9 @@ function Sidebar({ isOpen = true, onClose }) {
 
           {role === "SELLER" && (
             <div className="space-y-1">
-
-              <p className="mb-3 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+              <SectionTitle>
                 Seller
-              </p>
+              </SectionTitle>
 
               <NavItem
                 to="/seller/dashboard"
@@ -212,7 +269,6 @@ function Sidebar({ isOpen = true, onClose }) {
                 label="Add Property"
                 icon={PlusCircle}
               />
-
             </div>
           )}
 
@@ -223,10 +279,9 @@ function Sidebar({ isOpen = true, onClose }) {
           {(role === "ADMIN" ||
             role === "SUPER_ADMIN") && (
             <div className="space-y-1">
-
-              <p className="mb-3 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+              <SectionTitle>
                 Administration
-              </p>
+              </SectionTitle>
 
               <NavItem
                 to="/admin/dashboard"
@@ -275,36 +330,37 @@ function Sidebar({ isOpen = true, onClose }) {
                 label="Locations"
                 icon={MapPin}
               />
-
             </div>
           )}
-
         </nav>
 
         {/* ==========================================
-            FOOTER
+            USER FOOTER
         ========================================== */}
 
-        <div className="border-t border-slate-200 p-4">
-
-          <div className="rounded-xl bg-slate-50 p-3">
-
-            <p className="text-xs font-semibold text-slate-500">
+        <div className="shrink-0 border-t border-slate-200 p-3">
+          <div className="rounded-2xl bg-slate-50 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
               Logged in as
             </p>
 
-            <p className="mt-1 truncate text-sm font-bold text-slate-800">
-              {name}
-            </p>
+            <div className="mt-2.5 flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-700">
+                {userInitial}
+              </div>
 
-            <p className="mt-1 text-xs font-medium text-slate-400">
-              {role || "USER"}
-            </p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-slate-800">
+                  {name}
+                </p>
 
+                <p className="mt-0.5 truncate text-xs font-medium text-slate-400">
+                  {roleLabel}
+                </p>
+              </div>
+            </div>
           </div>
-
         </div>
-
       </aside>
     </>
   );
