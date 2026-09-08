@@ -1,29 +1,30 @@
 import { Loader2 } from "lucide-react";
 
-function LoadingSpinner({
+function Loader({
   text = "Loading...",
+  size = 26,
   fullScreen = false,
+  className = "",
 }) {
   return (
     <div
       className={
         fullScreen
-          ? "flex min-h-screen items-center justify-center bg-slate-50"
-          : "flex min-h-40 items-center justify-center"
+          ? `flex min-h-screen w-full flex-col items-center justify-center bg-slate-50 ${className}`
+          : `flex min-h-24 w-full flex-col items-center justify-center rounded-xl bg-white ${className}`
       }
+      role="status"
+      aria-live="polite"
     >
-      <div className="text-center">
-        <Loader2
-          size={36}
-          className="mx-auto animate-spin text-slate-700"
-        />
+      <Loader2
+        size={fullScreen ? 32 : size}
+        strokeWidth={2.2}
+        className="animate-spin text-slate-400"
+      />
 
-        <p className="mt-3 text-sm text-slate-500">
-          {text}
-        </p>
-      </div>
+      {text && <p className="mt-3 text-sm text-slate-500">{text}</p>}
     </div>
   );
 }
 
-export default LoadingSpinner;
+export default Loader;

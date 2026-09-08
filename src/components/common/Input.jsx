@@ -10,35 +10,14 @@ function Input({
   required = false,
   className = "",
 }) {
-  const hasError = Boolean(error);
-
   return (
     <div className="w-full">
-      {/* ==========================================
-          LABEL
-      ========================================== */}
-
       {label && (
-        <label
-          htmlFor={name}
-          className="mb-2 block text-sm font-semibold text-slate-700"
-        >
+        <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-slate-700">
           {label}
-
-          {required && (
-            <span
-              className="ml-1 text-red-500"
-              aria-hidden="true"
-            >
-              *
-            </span>
-          )}
+          {required && <span className="ml-1 text-red-500">*</span>}
         </label>
       )}
-
-      {/* ==========================================
-          INPUT
-      ========================================== */}
 
       <input
         id={name}
@@ -49,66 +28,22 @@ function Input({
         placeholder={placeholder}
         disabled={disabled}
         required={required}
-        aria-invalid={hasError}
-        aria-describedby={
-          hasError ? `${name}-error` : undefined
-        }
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${name}-error` : undefined}
         className={`
-          min-h-11
-          w-full
-          rounded-xl
-          border
-          bg-white
-          px-4
-          py-2.5
-          text-sm
-          font-medium
-          text-slate-800
-
-          shadow-sm
-
-          outline-none
-          transition-all
-          duration-200
-
+          min-h-11 w-full rounded-lg border bg-white px-3.5 py-2.5
+          text-sm text-slate-800 outline-none transition-colors duration-150
           placeholder:text-slate-400
-
-          hover:border-slate-400
-
-          focus:ring-4
-
-          disabled:cursor-not-allowed
-          disabled:border-slate-200
-          disabled:bg-slate-100
-          disabled:text-slate-500
-
-          ${
-            hasError
-              ? `
-                border-red-300
-                focus:border-red-500
-                focus:ring-red-50
-              `
-              : `
-                border-slate-200
-                focus:border-slate-500
-                focus:ring-slate-100
-              `
-          }
-
+          disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400
+          ${error
+            ? "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+            : "border-slate-200 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100"}
           ${className}
         `}
       />
 
-      {/* ==========================================
-          ERROR
-      ========================================== */}
-
-      {hasError && (
-        <p
-          id={`${name}-error`}
-          className="mt-1.5 text-xs font-medium leading-5 text-red-600"
-        >
+      {error && (
+        <p id={`${name}-error`} className="mt-1 text-xs text-red-600">
           {error}
         </p>
       )}
