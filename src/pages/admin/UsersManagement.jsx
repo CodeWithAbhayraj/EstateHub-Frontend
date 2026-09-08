@@ -18,1768 +18,399 @@ import {
   disableUser,
 } from "../../api/userApi";
 
-// ==========================================
-// ROLE CONFIG
-// ==========================================
-
-const USER_ROLES = [
-  "BUYER",
-  "SELLER",
-  "ADMIN",
-  "SUPER_ADMIN",
-];
-
-const USER_STATUS = [
-  "ACTIVE",
-  "DISABLED",
-];
-
-// ==========================================
-// ROLE BADGE
-// ==========================================
-
-function RoleBadge({ role }) {
-  const roleClasses = {
-    SUPER_ADMIN:
-      "bg-violet-50 text-violet-700",
-
-    ADMIN:
-      "bg-blue-50 text-blue-700",
-
-    SELLER:
-      "bg-orange-50 text-orange-700",
-
-    BUYER:
-      "bg-emerald-50 text-emerald-700",
+// ---------------------------
+// Role & Status Badges
+// ---------------------------
+const RoleBadge = ({ role }) => {
+  const classes = {
+    SUPER_ADMIN: "bg-violet-100 text-violet-700",
+    ADMIN: "bg-blue-100 text-blue-700",
+    SELLER: "bg-orange-100 text-orange-700",
+    BUYER: "bg-emerald-100 text-emerald-700",
   };
-
   return (
-    <span
-      className={`
-        inline-flex
-        items-center
-        rounded-full
-        px-3
-        py-1.5
-        text-[10px]
-        font-bold
-        uppercase
-        tracking-wide
-        ${
-          roleClasses[role] ||
-          "bg-slate-100 text-slate-600"
-        }
-      `}
-    >
-      {String(role || "USER").replaceAll(
-        "_",
-        " "
-      )}
+    <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold uppercase ${classes[role] || "bg-slate-100 text-slate-600"}`}>
+      {role?.replace("_", " ") || "USER"}
     </span>
   );
-}
+};
 
-// ==========================================
-// STATUS BADGE
-// ==========================================
+const StatusBadge = ({ enabled }) => (
+  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase ${enabled ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+    {enabled ? <CheckCircle size={12} /> : <XCircle size={12} />}
+    {enabled ? "Active" : "Disabled"}
+  </span>
+);
 
-function UserStatusBadge({ enabled }) {
-  if (enabled) {
-    return (
-      <span
-        className="
-          inline-flex
-          items-center
-          gap-1.5
-          rounded-full
-          bg-emerald-50
-          px-3
-          py-1.5
-          text-[10px]
-          font-bold
-          uppercase
-          tracking-wide
-          text-emerald-700
-        "
-      >
-        <CheckCircle size={12} />
-        Active
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className="
-        inline-flex
-        items-center
-        gap-1.5
-        rounded-full
-        bg-red-50
-        px-3
-        py-1.5
-        text-[10px]
-        font-bold
-        uppercase
-        tracking-wide
-        text-red-700
-      "
-    >
-      <XCircle size={12} />
-      Disabled
-    </span>
-  );
-}
-
-// ==========================================
-// STAT CARD
-// ==========================================
-
-function StatCard({
-  label,
-  value,
-  description,
-  icon: Icon,
-  iconClass,
-  valueClass = "text-slate-900",
-}) {
-  return (
-    <div
-      className="
-        group
-        rounded-2xl
-        border
-        border-slate-200
-        bg-white
-        p-4
-        shadow-sm
-        transition-all
-        duration-200
-
-        hover:-translate-y-0.5
-        hover:border-slate-300
-        hover:shadow-md
-
-        sm:p-5
-      "
-    >
-      <div className="flex items-start justify-between gap-3">
-
-        <div className="min-w-0">
-
-          <p className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-400 sm:text-xs">
-            {label}
-          </p>
-
-          <p
-            className={`
-              mt-2
-              text-2xl
-              font-bold
-              tracking-tight
-              sm:text-3xl
-              ${valueClass}
-            `}
-          >
-            {value}
-          </p>
-
-          <p className="mt-1 line-clamp-1 text-[11px] text-slate-400 sm:text-xs">
-            {description}
-          </p>
-
-        </div>
-
-        <div
-          className={`
-            flex
-            h-10
-            w-10
-            shrink-0
-            items-center
-            justify-center
-            rounded-xl
-            transition-transform
-            duration-200
-
-            group-hover:scale-105
-
-            sm:h-11
-            sm:w-11
-
-            ${iconClass}
-          `}
-        >
-          <Icon size={19} />
-        </div>
-
+// ---------------------------
+// Stat Card
+// ---------------------------
+const StatCard = ({ label, value, icon: Icon, color }) => (
+  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-xs font-bold uppercase text-slate-400">{label}</p>
+        <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
+        <Icon size={20} />
       </div>
     </div>
-  );
-}
+  </div>
+);
 
-// ==========================================
-// INFO BOX
-// ==========================================
+// ---------------------------
+// Main Component
+// ---------------------------
+export default function UsersManagement() {
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionId, setActionId] = useState(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-function InfoBox({
-  label,
-  value,
-  icon: Icon,
-}) {
-  return (
-    <div className="min-w-0 rounded-xl bg-slate-50 p-3">
-
-      <div className="flex items-center gap-2">
-
-        {Icon && (
-          <Icon
-            size={14}
-            className="shrink-0 text-slate-400"
-          />
-        )}
-
-        <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          {label}
-        </p>
-
-      </div>
-
-      <p className="mt-1 truncate text-xs font-bold text-slate-700 sm:text-sm">
-        {value}
-      </p>
-
-    </div>
-  );
-}
-
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
-
-function UsersManagement() {
-  const [users, setUsers] =
-    useState([]);
-
-  const [search, setSearch] =
-    useState("");
-
-  const [roleFilter, setRoleFilter] =
-    useState("ALL");
-
-  const [statusFilter, setStatusFilter] =
-    useState("ALL");
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [refreshing, setRefreshing] =
-    useState(false);
-
-  const [actionLoading, setActionLoading] =
-    useState(null);
-
-  const [error, setError] =
-    useState("");
-
-  const [success, setSuccess] =
-    useState("");
-
-  // ==========================================
-  // FETCH USERS
-  // ==========================================
-
-  const fetchUsers = async (
-    showFullLoader = true
-  ) => {
+  // Fetch users
+  const fetchUsers = async (showLoader = true) => {
     try {
-      if (showFullLoader) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
-      }
-
+      if (showLoader) setLoading(true);
+      else setRefreshing(true);
       setError("");
-
-      const data =
-        await getAllUsers();
-
-      setUsers(
-        Array.isArray(data)
-          ? data
-          : []
-      );
+      const data = await getAllUsers();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(
-        "Users error:",
-        err
-      );
-
-      setError(
-        err.response?.data?.message ||
-          "Failed to load users."
-      );
+      setError(err.response?.data?.message || "Failed to load users.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // ==========================================
-  // INITIAL LOAD
-  // ==========================================
-
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // ==========================================
-  // FILTER
-  // ==========================================
+  // Filter logic
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    return users.filter((u) => {
+      const matchSearch =
+        !term ||
+        u.name?.toLowerCase().includes(term) ||
+        u.email?.toLowerCase().includes(term) ||
+        u.mobile?.toLowerCase().includes(term) ||
+        String(u.id).includes(term);
+      const matchRole = roleFilter === "ALL" || u.role === roleFilter;
+      const matchStatus =
+        statusFilter === "ALL" ||
+        (statusFilter === "ACTIVE" && u.enabled) ||
+        (statusFilter === "DISABLED" && !u.enabled);
+      return matchSearch && matchRole && matchStatus;
+    });
+  }, [users, search, roleFilter, statusFilter]);
 
-  const filteredUsers = useMemo(() => {
-    const value =
-      search
-        .toLowerCase()
-        .trim();
-
-    return users.filter(
-      (user) => {
-        const matchesSearch =
-          !value ||
-          String(
-            user.name || ""
-          )
-            .toLowerCase()
-            .includes(value) ||
-          String(
-            user.email || ""
-          )
-            .toLowerCase()
-            .includes(value) ||
-          String(
-            user.mobile || ""
-          )
-            .toLowerCase()
-            .includes(value) ||
-          String(
-            user.id || ""
-          )
-            .toLowerCase()
-            .includes(value);
-
-        const matchesRole =
-          roleFilter === "ALL" ||
-          user.role ===
-            roleFilter;
-
-        const matchesStatus =
-          statusFilter === "ALL" ||
-          (statusFilter ===
-            "ACTIVE" &&
-            user.enabled === true) ||
-          (statusFilter ===
-            "DISABLED" &&
-            user.enabled === false);
-
-        return (
-          matchesSearch &&
-          matchesRole &&
-          matchesStatus
-        );
-      }
-    );
-  }, [
-    users,
-    search,
-    roleFilter,
-    statusFilter,
-  ]);
-
-  // ==========================================
-  // ENABLE USER
-  // ==========================================
-
-  const handleEnable = async (
-    userId
-  ) => {
+  // Enable/Disable
+  const toggleUser = async (id, enable) => {
     try {
-      setActionLoading(userId);
+      setActionId(id);
       setError("");
       setSuccess("");
-
-      const updatedUser =
-        await enableUser(userId);
-
-      setUsers((prev) =>
-        prev.map((user) =>
-          String(user.id) ===
-          String(userId)
-            ? updatedUser
-            : user
-        )
-      );
-
-      setSuccess(
-        "User enabled successfully."
-      );
+      const updated = enable ? await enableUser(id) : await disableUser(id);
+      setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
+      setSuccess(`User ${enable ? "enabled" : "disabled"} successfully.`);
     } catch (err) {
-      console.error(
-        "Enable user error:",
-        err
-      );
-
-      setError(
-        err.response?.data?.message ||
-          "Failed to enable user."
-      );
+      setError(err.response?.data?.message || "Action failed.");
     } finally {
-      setActionLoading(null);
+      setActionId(null);
     }
   };
 
-  // ==========================================
-  // DISABLE USER
-  // ==========================================
-
-  const handleDisable = async (
-    userId
-  ) => {
-    try {
-      setActionLoading(userId);
-      setError("");
-      setSuccess("");
-
-      const updatedUser =
-        await disableUser(userId);
-
-      setUsers((prev) =>
-        prev.map((user) =>
-          String(user.id) ===
-          String(userId)
-            ? updatedUser
-            : user
-        )
-      );
-
-      setSuccess(
-        "User disabled successfully."
-      );
-    } catch (err) {
-      console.error(
-        "Disable user error:",
-        err
-      );
-
-      setError(
-        err.response?.data?.message ||
-          "Failed to disable user."
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // ==========================================
-  // STATS
-  // ==========================================
-
-  const totalUsers =
-    users.length;
-
-  const activeUsers =
-    users.filter(
-      (user) =>
-        user.enabled === true
-    ).length;
-
-  const disabledUsers =
-    users.filter(
-      (user) =>
-        user.enabled === false
-    ).length;
-
-  const buyers =
-    users.filter(
-      (user) =>
-        user.role === "BUYER"
-    ).length;
-
-  const sellers =
-    users.filter(
-      (user) =>
-        user.role === "SELLER"
-    ).length;
-
-  const admins =
-    users.filter(
-      (user) =>
-        user.role === "ADMIN" ||
-        user.role === "SUPER_ADMIN"
-    ).length;
-
-  const activeFilter =
-    search.trim() !== "" ||
-    roleFilter !== "ALL" ||
-    statusFilter !== "ALL";
-
-  // ==========================================
-  // CLEAR FILTERS
-  // ==========================================
+  // Stats
+  const total = users.length;
+  const active = users.filter((u) => u.enabled).length;
+  const disabled = total - active;
+  const buyers = users.filter((u) => u.role === "BUYER").length;
+  const sellers = users.filter((u) => u.role === "SELLER").length;
+  const admins = users.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN").length;
 
   const clearFilters = () => {
     setSearch("");
     setRoleFilter("ALL");
     setStatusFilter("ALL");
   };
-
-  // ==========================================
-  // DATE FORMAT
-  // ==========================================
-
-  const formatDate = (date) => {
-    if (!date) {
-      return "—";
-    }
-
-    try {
-      return new Date(
-        date
-      ).toLocaleDateString(
-        "en-IN",
-        {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }
-      );
-    } catch {
-      return "—";
-    }
-  };
+  const isFilterActive = search || roleFilter !== "ALL" || statusFilter !== "ALL";
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
   return (
     <div className="w-full">
-
-      {/* ==========================================
-          HEADER
-      ========================================== */}
-
-      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-        <div className="relative p-5 sm:p-7 lg:p-8">
-
-          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-violet-50 blur-3xl" />
-
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-
-            {/* TITLE */}
-
-            <div className="flex min-w-0 items-start gap-3">
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                <Users size={21} />
-              </div>
-
-              <div className="min-w-0">
-
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-600">
-                  EstateHub Administration
-                </p>
-
-                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                  Users Management
-                </h1>
-
-                <p className="mt-1 text-sm leading-6 text-slate-500 sm:text-base">
-                  Manage buyers, sellers and admin users.
-                </p>
-
-              </div>
-
+      {/* Header */}
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+              <Users size={22} />
             </div>
-
-            {/* REFRESH */}
-
-            <button
-              type="button"
-              onClick={() =>
-                fetchUsers(false)
-              }
-              disabled={
-                loading ||
-                refreshing
-              }
-              className="
-                inline-flex
-                min-h-11
-                w-full
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                bg-slate-900
-                px-5
-                py-3
-                text-sm
-                font-semibold
-                text-white
-                shadow-sm
-                transition
-
-                hover:bg-slate-800
-                hover:shadow-md
-
-                active:scale-[0.98]
-
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-
-                sm:w-fit
-              "
-            >
-              <RefreshCw
-                size={16}
-                className={
-                  refreshing
-                    ? "animate-spin"
-                    : ""
-                }
-              />
-
-              {refreshing
-                ? "Refreshing..."
-                : "Refresh"}
-            </button>
-
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Users Management</h1>
+              <p className="text-sm text-slate-500">Manage buyers, sellers and admins.</p>
+            </div>
           </div>
-
+          <button
+            onClick={() => fetchUsers(false)}
+            disabled={loading || refreshing}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
         </div>
+      </div>
 
-      </section>
-
-
-      {/* ==========================================
-          ALERTS
-      ========================================== */}
-
+      {/* Alerts */}
       {error && (
-        <div
-          className="
-            mb-4
-            flex
-            items-start
-            gap-3
-            rounded-2xl
-            border
-            border-red-200
-            bg-red-50
-            p-4
-            text-sm
-            font-medium
-            leading-5
-            text-red-600
-          "
-          role="alert"
-        >
-          <AlertCircle
-            size={18}
-            className="mt-0.5 shrink-0"
-          />
-
-          <span>{error}</span>
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          <AlertCircle size={18} /> {error}
         </div>
       )}
-
       {success && (
-        <div
-          className="
-            mb-4
-            flex
-            items-start
-            gap-3
-            rounded-2xl
-            border
-            border-emerald-200
-            bg-emerald-50
-            p-4
-            text-sm
-            font-medium
-            leading-5
-            text-emerald-700
-          "
-          role="status"
-        >
-          <CheckCircle
-            size={18}
-            className="mt-0.5 shrink-0"
-          />
-
-          <span>{success}</span>
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+          <CheckCircle size={18} /> {success}
         </div>
       )}
 
-
-      {/* ==========================================
-          STATS
-      ========================================== */}
-
+      {/* Stats */}
       <section className="mb-6">
-
-        <div className="mb-4">
-
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
-            Overview
-          </p>
-
-          <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
-            User Activity
-          </h2>
-
+        <h2 className="mb-3 text-lg font-bold text-slate-900">Overview</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatCard label="Total" value={total} icon={Users} color="bg-violet-50 text-violet-600" />
+          <StatCard label="Active" value={active} icon={CheckCircle} color="bg-emerald-50 text-emerald-600" />
+          <StatCard label="Disabled" value={disabled} icon={XCircle} color="bg-red-50 text-red-600" />
+          <StatCard label="Buyers" value={buyers} icon={User} color="bg-blue-50 text-blue-600" />
+          <StatCard label="Sellers" value={sellers} icon={ShieldCheck} color="bg-orange-50 text-orange-600" />
         </div>
-
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-
-          <StatCard
-            label="Total Users"
-            value={totalUsers}
-            description="All registered users"
-            icon={Users}
-            iconClass="bg-violet-50 text-violet-600"
-          />
-
-          <StatCard
-            label="Active"
-            value={activeUsers}
-            description="Active accounts"
-            icon={CheckCircle}
-            valueClass="text-emerald-600"
-            iconClass="bg-emerald-50 text-emerald-600"
-          />
-
-          <StatCard
-            label="Disabled"
-            value={disabledUsers}
-            description="Disabled accounts"
-            icon={XCircle}
-            valueClass="text-red-600"
-            iconClass="bg-red-50 text-red-600"
-          />
-
-          <StatCard
-            label="Buyers"
-            value={buyers}
-            description="Registered buyers"
-            icon={User}
-            valueClass="text-blue-600"
-            iconClass="bg-blue-50 text-blue-600"
-          />
-
-          <StatCard
-            label="Sellers"
-            value={sellers}
-            description={`${admins} admin accounts`}
-            icon={ShieldCheck}
-            valueClass="text-orange-600"
-            iconClass="bg-orange-50 text-orange-600"
-          />
-
-        </div>
-
       </section>
 
-
-      {/* ==========================================
-          SEARCH + FILTER
-      ========================================== */}
-
-      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-
+      {/* Search + Filter */}
+      <section className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4">
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <Filter size={17} />
-              </div>
-
-              <div>
-
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Search & Filter
-                </p>
-
-                <p className="text-sm font-semibold text-slate-800">
-                  Find a user
-                </p>
-
-              </div>
-
+              <Filter size={18} className="text-slate-400" />
+              <span className="text-sm font-bold text-slate-700">Search & Filter</span>
             </div>
-
-
-            {activeFilter && (
-              <button
-                type="button"
-                onClick={
-                  clearFilters
-                }
-                className="text-left text-xs font-semibold text-blue-600 hover:text-blue-700 sm:text-right"
-              >
+            {isFilterActive && (
+              <button onClick={clearFilters} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
                 Clear filters
               </button>
             )}
-
           </div>
-
-
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_200px_200px]">
-
-            {/* SEARCH */}
-
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_180px]">
             <div className="relative">
-
-              <Search
-                size={17}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-
+              <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={search}
-                onChange={(event) =>
-                  setSearch(
-                    event.target.value
-                  )
-                }
-                placeholder="Search name, email, mobile or ID..."
-                className="
-                  min-h-11
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  py-2.5
-                  pl-10
-                  pr-4
-                  text-sm
-                  font-medium
-                  text-slate-800
-                  shadow-sm
-                  outline-none
-                  transition
-
-                  placeholder:text-slate-400
-
-                  hover:border-slate-400
-
-                  focus:border-slate-500
-                  focus:ring-4
-                  focus:ring-slate-100
-                "
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, email, mobile..."
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm shadow-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               />
-
             </div>
-
-
-            {/* ROLE */}
-
             <select
-              value={
-                roleFilter
-              }
-              onChange={(event) =>
-                setRoleFilter(
-                  event.target.value
-                )
-              }
-              className="
-                min-h-11
-                w-full
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                px-4
-                py-2.5
-                text-sm
-                font-medium
-                text-slate-800
-                shadow-sm
-                outline-none
-                transition
-
-                hover:border-slate-400
-
-                focus:border-slate-500
-                focus:ring-4
-                focus:ring-slate-100
-              "
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-slate-400"
             >
-
-              <option value="ALL">
-                All Roles
-              </option>
-
-              {USER_ROLES.map(
-                (role) => (
-                  <option
-                    key={role}
-                    value={role}
-                  >
-                    {role.replaceAll(
-                      "_",
-                      " "
-                    )}
-                  </option>
-                )
-              )}
-
+              <option value="ALL">All Roles</option>
+              {["BUYER", "SELLER", "ADMIN", "SUPER_ADMIN"].map((r) => (
+                <option key={r} value={r}>{r.replace("_", " ")}</option>
+              ))}
             </select>
-
-
-            {/* STATUS */}
-
             <select
-              value={
-                statusFilter
-              }
-              onChange={(event) =>
-                setStatusFilter(
-                  event.target.value
-                )
-              }
-              className="
-                min-h-11
-                w-full
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                px-4
-                py-2.5
-                text-sm
-                font-medium
-                text-slate-800
-                shadow-sm
-                outline-none
-                transition
-
-                hover:border-slate-400
-
-                focus:border-slate-500
-                focus:ring-4
-                focus:ring-slate-100
-              "
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-slate-400"
             >
-
-              <option value="ALL">
-                All Statuses
-              </option>
-
-              {USER_STATUS.map(
-                (status) => (
-                  <option
-                    key={status}
-                    value={status}
-                  >
-                    {status}
-                  </option>
-                )
-              )}
-
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="DISABLED">Disabled</option>
             </select>
-
           </div>
-
-
           {!loading && (
-            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
-
-              <span>
-                {filteredUsers.length}{" "}
-                {filteredUsers.length ===
-                1
-                  ? "user"
-                  : "users"}{" "}
-                found
-              </span>
-
-              {roleFilter !==
-                "ALL" && (
-                <span className="rounded-full bg-violet-50 px-2.5 py-1 font-bold text-violet-600">
-                  {roleFilter.replaceAll(
-                    "_",
-                    " "
-                  )}
-                </span>
-              )}
-
-              {statusFilter !==
-                "ALL" && (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 font-bold text-blue-600">
-                  {statusFilter}
-                </span>
-              )}
-
-            </div>
+            <p className="text-xs text-slate-400">
+              {filtered.length} user{filtered.length !== 1 ? "s" : ""} found
+            </p>
           )}
-
         </div>
-
       </section>
 
-
-      {/* ==========================================
-          CONTENT
-      ========================================== */}
-
+      {/* User List */}
       {loading ? (
-
-        <div className="flex min-h-72 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-
+        <div className="flex min-h-72 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="text-center">
-
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50">
-
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
-
-            </div>
-
-            <p className="mt-4 text-sm font-semibold text-slate-700">
-              Loading users...
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Please wait a moment.
-            </p>
-
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" />
+            <p className="mt-4 text-sm text-slate-500">Loading users...</p>
           </div>
-
         </div>
-
-      ) : filteredUsers.length ===
-        0 ? (
-
-        /* ========================================
-           EMPTY STATE
-        ======================================== */
-
-        <div className="flex min-h-80 items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-
-          <div className="max-w-md">
-
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-50">
-
-              <Users
-                size={30}
-                className="text-violet-400"
-              />
-
-            </div>
-
-            <h3 className="mt-5 text-xl font-bold tracking-tight text-slate-900">
-              No users found
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              No users match your current search or filters.
-            </p>
-
-            {activeFilter && (
-              <button
-                type="button"
-                onClick={
-                  clearFilters
-                }
-                className="
-                  mt-5
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-5
-                  py-3
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                  transition
-
-                  hover:bg-slate-50
-                "
-              >
-                Clear Filters
-              </button>
-            )}
-
-          </div>
-
+      ) : filtered.length === 0 ? (
+        <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-8 text-center">
+          <Users size={40} className="text-slate-300" />
+          <h3 className="mt-4 text-xl font-bold text-slate-800">No users found</h3>
+          <p className="text-sm text-slate-500">Try adjusting your search or filters.</p>
+          {isFilterActive && (
+            <button onClick={clearFilters} className="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">
+              Clear Filters
+            </button>
+          )}
         </div>
-
       ) : (
-
         <>
-          {/* ======================================
-              DESKTOP TABLE
-          ====================================== */}
-
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
-
-            <div className="overflow-x-auto">
-
-              <table className="w-full min-w-[1050px]">
-
-                <thead className="border-b border-slate-200 bg-slate-50">
-
-                  <tr>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      User
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Contact
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Role
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Status
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Created
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Action
-                    </th>
-
-                  </tr>
-
-                </thead>
-
-
-                <tbody className="divide-y divide-slate-100">
-
-                  {filteredUsers.map(
-                    (user) => {
-
-                      const isLoading =
-                        actionLoading ===
-                        user.id;
-
-                      const isProtected =
-                        user.role ===
-                        "SUPER_ADMIN";
-
-                      return (
-                        <tr
-                          key={
-                            user.id
-                          }
-                          className="transition hover:bg-slate-50"
+          {/* Desktop Table */}
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm lg:block">
+            <table className="w-full min-w-[800px]">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-slate-400">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-slate-400">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-slate-400">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-slate-400">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-slate-400">Created</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase text-slate-400">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((user) => (
+                  <tr key={user.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                          <User size={16} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800">{user.name || "Unnamed"}</p>
+                          <p className="text-xs text-slate-400">#{user.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-sm text-slate-700">{user.email || "—"}</p>
+                      <p className="text-xs text-slate-400">{user.mobile || "No mobile"}</p>
+                    </td>
+                    <td className="px-4 py-3"><RoleBadge role={user.role} /></td>
+                    <td className="px-4 py-3"><StatusBadge enabled={user.enabled} /></td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{formatDate(user.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      {user.role === "SUPER_ADMIN" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
+                          <ShieldCheck size={14} /> Protected
+                        </span>
+                      ) : user.enabled ? (
+                        <button
+                          onClick={() => toggleUser(user.id, false)}
+                          disabled={actionId === user.id}
+                          className="rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
                         >
-
-                          {/* USER */}
-
-                          <td className="px-5 py-5 align-top">
-
-                            <div className="flex items-center gap-3">
-
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-
-                                <User
-                                  size={18}
-                                />
-
-                              </div>
-
-                              <div className="min-w-0">
-
-                                <p className="max-w-[180px] truncate text-sm font-bold text-slate-900">
-                                  {user.name ||
-                                    "Unnamed User"}
-                                </p>
-
-                                <p className="mt-1 text-xs text-slate-400">
-                                  User #
-                                  {
-                                    user.id
-                                  }
-                                </p>
-
-                              </div>
-
-                            </div>
-
-                          </td>
-
-
-                          {/* CONTACT */}
-
-                          <td className="px-5 py-5 align-top">
-
-                            <p className="max-w-[220px] truncate text-sm font-medium text-slate-700">
-                              {user.email ||
-                                "—"}
-                            </p>
-
-                            <p className="mt-1 text-xs text-slate-400">
-                              {user.mobile ||
-                                "No mobile"}
-                            </p>
-
-                          </td>
-
-
-                          {/* ROLE */}
-
-                          <td className="px-5 py-5 align-top">
-
-                            <RoleBadge
-                              role={
-                                user.role
-                              }
-                            />
-
-                          </td>
-
-
-                          {/* STATUS */}
-
-                          <td className="px-5 py-5 align-top">
-
-                            <UserStatusBadge
-                              enabled={
-                                user.enabled
-                              }
-                            />
-
-                          </td>
-
-
-                          {/* CREATED */}
-
-                          <td className="px-5 py-5 align-top text-sm text-slate-600">
-
-                            {formatDate(
-                              user.createdAt
-                            )}
-
-                          </td>
-
-
-                          {/* ACTION */}
-
-                          <td className="px-5 py-5 align-top">
-
-                            {isProtected ? (
-
-                              <div className="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-600">
-
-                                <ShieldCheck
-                                  size={14}
-                                />
-
-                                Protected
-
-                              </div>
-
-                            ) : user.enabled ? (
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleDisable(
-                                    user.id
-                                  )
-                                }
-                                disabled={
-                                  isLoading
-                                }
-                                className="
-                                  inline-flex
-                                  min-h-10
-                                  items-center
-                                  justify-center
-                                  gap-1.5
-                                  rounded-xl
-                                  border
-                                  border-red-200
-                                  bg-red-50
-                                  px-4
-                                  py-2
-                                  text-xs
-                                  font-semibold
-                                  text-red-600
-                                  transition
-
-                                  hover:bg-red-100
-
-                                  active:scale-[0.98]
-
-                                  disabled:cursor-not-allowed
-                                  disabled:opacity-50
-                                "
-                              >
-
-                                {isLoading ? (
-                                  <RefreshCw
-                                    size={14}
-                                    className="animate-spin"
-                                  />
-                                ) : (
-                                  <XCircle
-                                    size={14}
-                                  />
-                                )}
-
-                                {isLoading
-                                  ? "Updating..."
-                                  : "Disable"}
-
-                              </button>
-
-                            ) : (
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleEnable(
-                                    user.id
-                                  )
-                                }
-                                disabled={
-                                  isLoading
-                                }
-                                className="
-                                  inline-flex
-                                  min-h-10
-                                  items-center
-                                  justify-center
-                                  gap-1.5
-                                  rounded-xl
-                                  border
-                                  border-emerald-200
-                                  bg-emerald-50
-                                  px-4
-                                  py-2
-                                  text-xs
-                                  font-semibold
-                                  text-emerald-600
-                                  transition
-
-                                  hover:bg-emerald-100
-
-                                  active:scale-[0.98]
-
-                                  disabled:cursor-not-allowed
-                                  disabled:opacity-50
-                                "
-                              >
-
-                                {isLoading ? (
-                                  <RefreshCw
-                                    size={14}
-                                    className="animate-spin"
-                                  />
-                                ) : (
-                                  <CheckCircle
-                                    size={14}
-                                  />
-                                )}
-
-                                {isLoading
-                                  ? "Updating..."
-                                  : "Enable"}
-
-                              </button>
-
-                            )}
-
-                          </td>
-
-                        </tr>
-                      );
-                    }
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
+                          {actionId === user.id ? "Updating..." : "Disable"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => toggleUser(user.id, true)}
+                          disabled={actionId === user.id}
+                          className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50"
+                        >
+                          {actionId === user.id ? "Updating..." : "Enable"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-
-          {/* ======================================
-              MOBILE / TABLET CARDS
-          ====================================== */}
-
+          {/* Mobile Cards */}
           <div className="grid gap-4 lg:hidden">
-
-            {filteredUsers.map(
-              (user) => {
-
-                const isLoading =
-                  actionLoading ===
-                  user.id;
-
-                const isProtected =
-                  user.role ===
-                  "SUPER_ADMIN";
-
-                return (
-                  <article
-                    key={
-                      user.id
-                    }
-                    className="
-                      rounded-2xl
-                      border
-                      border-slate-200
-                      bg-white
-                      p-4
-                      shadow-sm
-                      transition
-
-                      hover:border-slate-300
-                      hover:shadow-md
-
-                      sm:p-5
-                    "
-                  >
-
-                    {/* CARD HEADER */}
-
-                    <div className="flex items-start justify-between gap-3">
-
-                      <div className="flex min-w-0 items-start gap-3">
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600">
-
-                          <User
-                            size={18}
-                          />
-
-                        </div>
-
-                        <div className="min-w-0">
-
-                          <p className="truncate text-sm font-bold text-slate-900">
-                            {user.name ||
-                              "Unnamed User"}
-                          </p>
-
-                          <p className="mt-1 text-xs text-slate-400">
-                            User #
-                            {user.id}
-                          </p>
-
-                        </div>
-
-                      </div>
-
-                      <UserStatusBadge
-                        enabled={
-                          user.enabled
-                        }
-                      />
-
+            {filtered.map((user) => (
+              <div key={user.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                      <User size={18} />
                     </div>
-
-
-                    {/* ROLE */}
-
-                    <div className="mt-4">
-
-                      <RoleBadge
-                        role={
-                          user.role
-                        }
-                      />
-
+                    <div>
+                      <p className="font-bold text-slate-900">{user.name || "Unnamed"}</p>
+                      <p className="text-xs text-slate-400">#{user.id}</p>
                     </div>
-
-
-                    {/* INFO */}
-
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-
-                      <InfoBox
-                        label="Email"
-                        value={
-                          user.email ||
-                          "—"
-                        }
-                        icon={
-                          User
-                        }
-                      />
-
-                      <InfoBox
-                        label="Mobile"
-                        value={
-                          user.mobile ||
-                          "—"
-                        }
-                        icon={
-                          User
-                        }
-                      />
-
-                      <InfoBox
-                        label="Created"
-                        value={formatDate(
-                          user.createdAt
-                        )}
-                        icon={
-                          CheckCircle
-                        }
-                      />
-
-                      <InfoBox
-                        label="Role"
-                        value={
-                          user.role?.replaceAll(
-                            "_",
-                            " "
-                          ) ||
-                          "USER"
-                        }
-                        icon={
-                          ShieldCheck
-                        }
-                      />
-
+                  </div>
+                  <StatusBadge enabled={user.enabled} />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-400">Email</p>
+                    <p className="font-medium">{user.email || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Mobile</p>
+                    <p className="font-medium">{user.mobile || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Role</p>
+                    <RoleBadge role={user.role} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Created</p>
+                    <p className="font-medium">{formatDate(user.createdAt)}</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  {user.role === "SUPER_ADMIN" ? (
+                    <div className="flex items-center justify-center gap-2 rounded-xl bg-violet-50 py-2 text-sm font-semibold text-violet-700">
+                      <ShieldCheck size={16} /> Protected
                     </div>
-
-
-                    {/* ACTION */}
-
-                    <div className="mt-4">
-
-                      {isProtected ? (
-
-                        <div className="flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs font-semibold text-violet-600">
-
-                          <ShieldCheck
-                            size={15}
-                          />
-
-                          SUPER ADMIN — Protected
-
-                        </div>
-
-                      ) : user.enabled ? (
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDisable(
-                              user.id
-                            )
-                          }
-                          disabled={
-                            isLoading
-                          }
-                          className="
-                            inline-flex
-                            min-h-11
-                            w-full
-                            items-center
-                            justify-center
-                            gap-2
-                            rounded-xl
-                            border
-                            border-red-200
-                            bg-red-50
-                            px-4
-                            py-3
-                            text-sm
-                            font-semibold
-                            text-red-600
-                            transition
-
-                            hover:bg-red-100
-
-                            active:scale-[0.98]
-
-                            disabled:cursor-not-allowed
-                            disabled:opacity-50
-                          "
-                        >
-
-                          {isLoading ? (
-                            <>
-                              <RefreshCw
-                                size={16}
-                                className="animate-spin"
-                              />
-                              Updating...
-                            </>
-                          ) : (
-                            <>
-                              <XCircle
-                                size={16}
-                              />
-                              Disable User
-                            </>
-                          )}
-
-                        </button>
-
-                      ) : (
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleEnable(
-                              user.id
-                            )
-                          }
-                          disabled={
-                            isLoading
-                          }
-                          className="
-                            inline-flex
-                            min-h-11
-                            w-full
-                            items-center
-                            justify-center
-                            gap-2
-                            rounded-xl
-                            border
-                            border-emerald-200
-                            bg-emerald-50
-                            px-4
-                            py-3
-                            text-sm
-                            font-semibold
-                            text-emerald-600
-                            transition
-
-                            hover:bg-emerald-100
-
-                            active:scale-[0.98]
-
-                            disabled:cursor-not-allowed
-                            disabled:opacity-50
-                          "
-                        >
-
-                          {isLoading ? (
-                            <>
-                              <RefreshCw
-                                size={16}
-                                className="animate-spin"
-                              />
-                              Updating...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle
-                                size={16}
-                              />
-                              Enable User
-                            </>
-                          )}
-
-                        </button>
-
-                      )}
-
-                    </div>
-
-                  </article>
-                );
-              }
-            )}
-
+                  ) : user.enabled ? (
+                    <button
+                      onClick={() => toggleUser(user.id, false)}
+                      disabled={actionId === user.id}
+                      className="w-full rounded-xl border border-red-200 bg-red-50 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {actionId === user.id ? "Updating..." : "Disable User"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleUser(user.id, true)}
+                      disabled={actionId === user.id}
+                      className="w-full rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-sm font-semibold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                      {actionId === user.id ? "Updating..." : "Enable User"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
 
-      {/* ==========================================
-          BOTTOM SUMMARY
-      ========================================== */}
-
-      {!loading &&
-        users.length > 0 && (
-          <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-              <div>
-
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  User Summary
-                </p>
-
-                <p className="mt-1 text-sm font-semibold text-slate-800">
-                  {activeUsers} active users out of{" "}
-                  {totalUsers} total accounts
-                </p>
-
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-
-                <SummaryBadge
-                  label="Buyers"
-                  value={buyers}
-                />
-
-                <SummaryBadge
-                  label="Sellers"
-                  value={sellers}
-                />
-
-                <SummaryBadge
-                  label="Admins"
-                  value={admins}
-                />
-
-              </div>
-
+      {/* Summary Footer */}
+      {!loading && users.length > 0 && (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase text-slate-400">Summary</p>
+              <p className="text-sm font-semibold text-slate-700">
+                {active} active · {disabled} disabled · {total} total
+              </p>
             </div>
-
-          </section>
-        )}
-
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-xl bg-slate-50 px-3 py-1 text-xs font-medium">Buyers {buyers}</span>
+              <span className="rounded-xl bg-slate-50 px-3 py-1 text-xs font-medium">Sellers {sellers}</span>
+              <span className="rounded-xl bg-slate-50 px-3 py-1 text-xs font-medium">Admins {admins}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// ==========================================
-// SUMMARY BADGE
-// ==========================================
-
-function SummaryBadge({
-  label,
-  value,
-}) {
-  return (
-    <div className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
-
-      <span className="text-xs font-medium text-slate-500">
-        {label}
-      </span>
-
-      <span className="text-sm font-bold text-slate-900">
-        {value}
-      </span>
-
-    </div>
-  );
-}
-
-export default UsersManagement;

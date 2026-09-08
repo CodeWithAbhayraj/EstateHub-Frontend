@@ -1,1483 +1,408 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  CalendarDays,
-  Clock,
-  RefreshCw,
-  Search,
+  Users,
   User,
-  Building2,
-  ChevronDown,
+  Search,
+  RefreshCw,
   CheckCircle,
-  AlertCircle,
-  Filter,
-  ArrowRight,
   XCircle,
+  ShieldCheck,
+  Filter,
+  AlertCircle,
 } from "lucide-react";
 
 import {
-  getAllVisits,
-  updateVisitStatus,
-} from "../../api/visitApi";
+  getAllUsers,
+  enableUser,
+  disableUser,
+} from "../../api/userApi";
 
-// ==========================================
-// VISIT STATUSES
-// ==========================================
-
-const VISIT_STATUSES = [
-  "SCHEDULED",
-  "COMPLETED",
-  "CANCELLED",
-  "RESCHEDULED",
-];
-
-// ==========================================
-// STATUS BADGE
-// ==========================================
-
-function StatusBadge({ status }) {
-  const statusClasses = {
-    SCHEDULED:
-      "bg-blue-50 text-blue-700",
-
-    COMPLETED:
-      "bg-emerald-50 text-emerald-700",
-
-    CANCELLED:
-      "bg-red-50 text-red-700",
-
-    RESCHEDULED:
-      "bg-amber-50 text-amber-700",
+// ---------- Badges ----------
+const RoleBadge = ({ role }) => {
+  const map = {
+    SUPER_ADMIN: "bg-violet-100 text-violet-700",
+    ADMIN: "bg-blue-100 text-blue-700",
+    SELLER: "bg-orange-100 text-orange-700",
+    BUYER: "bg-emerald-100 text-emerald-700",
   };
-
   return (
-    <span
-      className={`
-        inline-flex
-        items-center
-        rounded-full
-        px-3
-        py-1.5
-        text-[10px]
-        font-bold
-        uppercase
-        tracking-wide
-        ${
-          statusClasses[status] ||
-          "bg-slate-100 text-slate-600"
-        }
-      `}
-    >
-      {String(
-        status || "UNKNOWN"
-      ).replaceAll("_", " ")}
+    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${map[role] || "bg-slate-100 text-slate-600"}`}>
+      {role?.replace("_", " ") || "USER"}
     </span>
   );
-}
+};
 
-// ==========================================
-// STAT CARD
-// ==========================================
+const StatusBadge = ({ enabled }) => (
+  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${enabled ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+    {enabled ? <CheckCircle size={12} /> : <XCircle size={12} />}
+    {enabled ? "Active" : "Disabled"}
+  </span>
+);
 
-function StatCard({
-  label,
-  value,
-  description,
-  icon: Icon,
-  iconClass,
-  valueClass = "text-slate-900",
-}) {
-  return (
-    <div
-      className="
-        group
-        rounded-2xl
-        border
-        border-slate-200
-        bg-white
-        p-4
-        shadow-sm
-        transition-all
-        duration-200
-
-        hover:-translate-y-0.5
-        hover:border-slate-300
-        hover:shadow-md
-
-        sm:p-5
-      "
-    >
-      <div className="flex items-start justify-between gap-3">
-
-        <div className="min-w-0">
-
-          <p className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-400 sm:text-xs">
-            {label}
-          </p>
-
-          <p
-            className={`
-              mt-2
-              text-2xl
-              font-bold
-              tracking-tight
-              sm:text-3xl
-              ${valueClass}
-            `}
-          >
-            {value}
-          </p>
-
-          <p className="mt-1 line-clamp-1 text-[11px] text-slate-400 sm:text-xs">
-            {description}
-          </p>
-
-        </div>
-
-        <div
-          className={`
-            flex
-            h-10
-            w-10
-            shrink-0
-            items-center
-            justify-center
-            rounded-xl
-            transition-transform
-            duration-200
-            group-hover:scale-105
-
-            sm:h-11
-            sm:w-11
-
-            ${iconClass}
-          `}
-        >
-          <Icon size={19} />
-        </div>
-
+// ---------- Stat Card (simplified) ----------
+const StatCard = ({ label, value, icon: Icon, color }) => (
+  <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-[10px] font-bold uppercase text-slate-400">{label}</p>
+        <p className="text-xl font-bold text-slate-900">{value}</p>
+      </div>
+      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${color}`}>
+        <Icon size={16} />
       </div>
     </div>
-  );
-}
+  </div>
+);
 
-// ==========================================
-// INFO BOX
-// ==========================================
+// ---------- Main Component ----------
+export default function UsersManagement() {
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionId, setActionId] = useState(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-function InfoBox({
-  label,
-  value,
-  icon: Icon,
-}) {
-  return (
-    <div className="min-w-0 rounded-xl bg-slate-50 p-3">
-
-      <div className="flex items-center gap-2">
-
-        {Icon && (
-          <Icon
-            size={14}
-            className="shrink-0 text-slate-400"
-          />
-        )}
-
-        <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          {label}
-        </p>
-
-      </div>
-
-      <p className="mt-1 truncate text-xs font-bold text-slate-700 sm:text-sm">
-        {value}
-      </p>
-
-    </div>
-  );
-}
-
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
-
-function VisitsManagement() {
-  const [visits, setVisits] =
-    useState([]);
-
-  const [search, setSearch] =
-    useState("");
-
-  const [statusFilter, setStatusFilter] =
-    useState("ALL");
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [refreshing, setRefreshing] =
-    useState(false);
-
-  const [actionLoading, setActionLoading] =
-    useState(null);
-
-  const [error, setError] =
-    useState("");
-
-  const [success, setSuccess] =
-    useState("");
-
-  // ==========================================
-  // FETCH VISITS
-  // ==========================================
-
-  const fetchVisits = async (
-    showFullLoader = true
-  ) => {
+  // Fetch
+  const fetchUsers = async (showLoader = true) => {
     try {
-      if (showFullLoader) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
-      }
-
+      if (showLoader) setLoading(true);
+      else setRefreshing(true);
       setError("");
-
-      const data =
-        await getAllVisits();
-
-      setVisits(
-        Array.isArray(data)
-          ? data
-          : []
-      );
+      const data = await getAllUsers();
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(
-        "Visits error:",
-        err
-      );
-
-      setError(
-        err.response?.data?.message ||
-          "Failed to load visits."
-      );
+      setError(err.response?.data?.message || "Failed to load users.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // ==========================================
-  // INITIAL LOAD
-  // ==========================================
-
   useEffect(() => {
-    fetchVisits();
+    fetchUsers();
   }, []);
 
-  // ==========================================
-  // FILTER
-  // ==========================================
+  // Filter
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    return users.filter((u) => {
+      const matchSearch =
+        !term ||
+        u.name?.toLowerCase().includes(term) ||
+        u.email?.toLowerCase().includes(term) ||
+        u.mobile?.toLowerCase().includes(term) ||
+        String(u.id).includes(term);
+      const matchRole = roleFilter === "ALL" || u.role === roleFilter;
+      const matchStatus =
+        statusFilter === "ALL" ||
+        (statusFilter === "ACTIVE" && u.enabled) ||
+        (statusFilter === "DISABLED" && !u.enabled);
+      return matchSearch && matchRole && matchStatus;
+    });
+  }, [users, search, roleFilter, statusFilter]);
 
-  const filteredVisits = useMemo(() => {
-    const value =
-      search
-        .toLowerCase()
-        .trim();
-
-    return visits.filter(
-      (visit) => {
-        const matchesSearch =
-          !value ||
-          String(
-            visit.propertyTitle || ""
-          )
-            .toLowerCase()
-            .includes(value) ||
-          String(
-            visit.buyerName || ""
-          )
-            .toLowerCase()
-            .includes(value) ||
-          String(
-            visit.id || ""
-          )
-            .toLowerCase()
-            .includes(value) ||
-          String(
-            visit.propertyId || ""
-          )
-            .toLowerCase()
-            .includes(value);
-
-        const matchesStatus =
-          statusFilter === "ALL" ||
-          visit.status ===
-            statusFilter;
-
-        return (
-          matchesSearch &&
-          matchesStatus
-        );
-      }
-    );
-  }, [
-    visits,
-    search,
-    statusFilter,
-  ]);
-
-  // ==========================================
-  // UPDATE STATUS
-  // ==========================================
-
-  const handleStatusChange = async (
-    visitId,
-    status
-  ) => {
+  // Toggle enable/disable
+  const toggleUser = async (id, enable) => {
     try {
-      setActionLoading(visitId);
+      setActionId(id);
       setError("");
       setSuccess("");
-
-      const updatedVisit =
-        await updateVisitStatus(
-          visitId,
-          {
-            status,
-          }
-        );
-
-      setVisits((prev) =>
-        prev.map((visit) =>
-          String(visit.id) ===
-          String(visitId)
-            ? updatedVisit
-            : visit
-        )
-      );
-
-      setSuccess(
-        `Visit #${visitId} updated successfully.`
-      );
+      const updated = enable ? await enableUser(id) : await disableUser(id);
+      setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
+      setSuccess(`User ${enable ? "enabled" : "disabled"} successfully.`);
     } catch (err) {
-      console.error(
-        "Update visit status error:",
-        err
-      );
-
-      setError(
-        err.response?.data?.message ||
-          "Failed to update visit status."
-      );
+      setError(err.response?.data?.message || "Action failed.");
     } finally {
-      setActionLoading(null);
+      setActionId(null);
     }
   };
 
-  // ==========================================
-  // DATE FORMAT
-  // ==========================================
-
-  const formatDate = (date) => {
-    if (!date) {
-      return "Not specified";
-    }
-
-    return date;
-  };
-
-  // ==========================================
-  // STATS
-  // ==========================================
-
-  const totalVisits =
-    visits.length;
-
-  const scheduledVisits =
-    visits.filter(
-      (visit) =>
-        visit.status ===
-        "SCHEDULED"
-    ).length;
-
-  const completedVisits =
-    visits.filter(
-      (visit) =>
-        visit.status ===
-        "COMPLETED"
-    ).length;
-
-  const cancelledVisits =
-    visits.filter(
-      (visit) =>
-        visit.status ===
-        "CANCELLED"
-    ).length;
-
-  const activeFilter =
-    search.trim() !== "" ||
-    statusFilter !== "ALL";
-
-  // ==========================================
-  // CLEAR FILTERS
-  // ==========================================
+  // Stats
+  const total = users.length;
+  const active = users.filter((u) => u.enabled).length;
+  const disabled = total - active;
+  const buyers = users.filter((u) => u.role === "BUYER").length;
+  const sellers = users.filter((u) => u.role === "SELLER").length;
+  const admins = users.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN").length;
 
   const clearFilters = () => {
     setSearch("");
+    setRoleFilter("ALL");
     setStatusFilter("ALL");
   };
+  const isFilterActive = search || roleFilter !== "ALL" || statusFilter !== "ALL";
+  const formatDate = (d) =>
+    d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
   return (
-    <div className="w-full">
-
-      {/* ==========================================
-          HEADER
-      ========================================== */}
-
-      <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-        <div className="relative p-5 sm:p-7 lg:p-8">
-
-          <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-emerald-50 blur-3xl" />
-
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-
-            {/* TITLE */}
-
-            <div className="flex min-w-0 items-start gap-3">
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                <CalendarDays size={21} />
-              </div>
-
-              <div className="min-w-0">
-
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-600">
-                  EstateHub Administration
-                </p>
-
-                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                  Visits Management
-                </h1>
-
-                <p className="mt-1 text-sm leading-6 text-slate-500 sm:text-base">
-                  Manage property visits and update their status.
-                </p>
-
-              </div>
-
-            </div>
-
-
-            {/* REFRESH */}
-
-            <button
-              type="button"
-              onClick={() =>
-                fetchVisits(false)
-              }
-              disabled={
-                loading ||
-                refreshing
-              }
-              className="
-                inline-flex
-                min-h-11
-                w-full
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                bg-slate-900
-                px-5
-                py-3
-                text-sm
-                font-semibold
-                text-white
-                shadow-sm
-                transition
-
-                hover:bg-slate-800
-                hover:shadow-md
-
-                active:scale-[0.98]
-
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-
-                sm:w-fit
-              "
-            >
-              <RefreshCw
-                size={16}
-                className={
-                  refreshing
-                    ? "animate-spin"
-                    : ""
-                }
-              />
-
-              {refreshing
-                ? "Refreshing..."
-                : "Refresh"}
-            </button>
-
+    <div className="w-full max-w-7xl mx-auto px-4 py-6">
+      {/* Header */}
+      <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+            <Users size={20} />
           </div>
-
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Users Management</h1>
+            <p className="text-sm text-slate-500">Manage buyers, sellers and admins.</p>
+          </div>
         </div>
+        <button
+          onClick={() => fetchUsers(false)}
+          disabled={loading || refreshing}
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+        >
+          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+          {refreshing ? "Refreshing..." : "Refresh"}
+        </button>
+      </div>
 
-      </section>
-
-
-      {/* ==========================================
-          ALERTS
-      ========================================== */}
-
+      {/* Alerts */}
       {error && (
-        <div
-          className="
-            mb-4
-            flex
-            items-start
-            gap-3
-            rounded-2xl
-            border
-            border-red-200
-            bg-red-50
-            p-4
-            text-sm
-            font-medium
-            leading-5
-            text-red-600
-          "
-          role="alert"
-        >
-          <AlertCircle
-            size={18}
-            className="mt-0.5 shrink-0"
-          />
-
-          <span>{error}</span>
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          <AlertCircle size={18} /> {error}
         </div>
       )}
-
       {success && (
-        <div
-          className="
-            mb-4
-            flex
-            items-start
-            gap-3
-            rounded-2xl
-            border
-            border-emerald-200
-            bg-emerald-50
-            p-4
-            text-sm
-            font-medium
-            leading-5
-            text-emerald-700
-          "
-          role="status"
-        >
-          <CheckCircle
-            size={18}
-            className="mt-0.5 shrink-0"
-          />
-
-          <span>{success}</span>
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+          <CheckCircle size={18} /> {success}
         </div>
       )}
 
-
-      {/* ==========================================
-          STATS
-      ========================================== */}
-
+      {/* Stats */}
       <section className="mb-6">
-
-        <div className="mb-4">
-
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
-            Overview
-          </p>
-
-          <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
-            Visit Activity
-          </h2>
-
+        <h2 className="mb-3 text-lg font-bold text-slate-900">Overview</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatCard label="Total" value={total} icon={Users} color="bg-violet-50 text-violet-600" />
+          <StatCard label="Active" value={active} icon={CheckCircle} color="bg-emerald-50 text-emerald-600" />
+          <StatCard label="Disabled" value={disabled} icon={XCircle} color="bg-red-50 text-red-600" />
+          <StatCard label="Buyers" value={buyers} icon={User} color="bg-blue-50 text-blue-600" />
+          <StatCard label="Sellers" value={sellers} icon={ShieldCheck} color="bg-orange-50 text-orange-600" />
         </div>
-
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-
-          <StatCard
-            label="Total Visits"
-            value={totalVisits}
-            description="All property visits"
-            icon={CalendarDays}
-            iconClass="bg-blue-50 text-blue-600"
-          />
-
-          <StatCard
-            label="Scheduled"
-            value={scheduledVisits}
-            description="Upcoming visits"
-            icon={Clock}
-            valueClass="text-blue-600"
-            iconClass="bg-blue-50 text-blue-600"
-          />
-
-          <StatCard
-            label="Completed"
-            value={completedVisits}
-            description="Completed visits"
-            icon={CheckCircle}
-            valueClass="text-emerald-600"
-            iconClass="bg-emerald-50 text-emerald-600"
-          />
-
-          <StatCard
-            label="Cancelled"
-            value={cancelledVisits}
-            description="Cancelled visits"
-            icon={XCircle}
-            valueClass="text-red-600"
-            iconClass="bg-red-50 text-red-600"
-          />
-
-        </div>
-
       </section>
 
-
-      {/* ==========================================
-          SEARCH + FILTER
-      ========================================== */}
-
-      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-
+      {/* Search & Filter */}
+      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4">
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <Filter size={17} />
-              </div>
-
-              <div>
-
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Search & Filter
-                </p>
-
-                <p className="text-sm font-semibold text-slate-800">
-                  Find a visit
-                </p>
-
-              </div>
-
+              <Filter size={16} className="text-slate-400" />
+              <span className="text-sm font-medium text-slate-700">Search & Filter</span>
             </div>
-
-
-            {activeFilter && (
-              <button
-                type="button"
-                onClick={
-                  clearFilters
-                }
-                className="text-left text-xs font-semibold text-blue-600 hover:text-blue-700 sm:text-right"
-              >
+            {isFilterActive && (
+              <button onClick={clearFilters} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
                 Clear filters
               </button>
             )}
-
           </div>
-
-
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
-
-            {/* SEARCH */}
-
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_160px_160px]">
             <div className="relative">
-
-              <Search
-                size={17}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={search}
-                onChange={(event) =>
-                  setSearch(
-                    event.target.value
-                  )
-                }
-                placeholder="Search property, buyer or visit ID..."
-                className="
-                  min-h-11
-                  w-full
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  py-2.5
-                  pl-10
-                  pr-4
-                  text-sm
-                  font-medium
-                  text-slate-800
-                  shadow-sm
-                  outline-none
-                  transition
-
-                  placeholder:text-slate-400
-
-                  hover:border-slate-400
-
-                  focus:border-slate-500
-                  focus:ring-4
-                  focus:ring-slate-100
-                "
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, email, mobile..."
+                className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-9 pr-3 text-sm shadow-sm outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-200"
               />
-
             </div>
-
-
-            {/* STATUS */}
-
-            <div className="relative">
-
-              <select
-                value={
-                  statusFilter
-                }
-                onChange={(event) =>
-                  setStatusFilter(
-                    event.target.value
-                  )
-                }
-                className="
-                  min-h-11
-                  w-full
-                  appearance-none
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-4
-                  py-2.5
-                  pr-10
-                  text-sm
-                  font-medium
-                  text-slate-800
-                  shadow-sm
-                  outline-none
-                  transition
-
-                  hover:border-slate-400
-
-                  focus:border-slate-500
-                  focus:ring-4
-                  focus:ring-slate-100
-                "
-              >
-
-                <option value="ALL">
-                  All Statuses
-                </option>
-
-                {VISIT_STATUSES.map(
-                  (status) => (
-                    <option
-                      key={status}
-                      value={status}
-                    >
-                      {status.replaceAll(
-                        "_",
-                        " "
-                      )}
-                    </option>
-                  )
-                )}
-
-              </select>
-
-              <ChevronDown
-                size={16}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-
-            </div>
-
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm outline-none focus:border-slate-400"
+            >
+              <option value="ALL">All Roles</option>
+              {["BUYER", "SELLER", "ADMIN", "SUPER_ADMIN"].map((r) => (
+                <option key={r} value={r}>{r.replace("_", " ")}</option>
+              ))}
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm outline-none focus:border-slate-400"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="DISABLED">Disabled</option>
+            </select>
           </div>
-
-
           {!loading && (
-            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
-
-              <span>
-                {filteredVisits.length}{" "}
-                {filteredVisits.length ===
-                1
-                  ? "visit"
-                  : "visits"}{" "}
-                found
-              </span>
-
-              {statusFilter !==
-                "ALL" && (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 font-bold text-blue-600">
-                  {statusFilter.replaceAll(
-                    "_",
-                    " "
-                  )}
-                </span>
-              )}
-
-            </div>
+            <p className="text-xs text-slate-400">
+              {filtered.length} user{filtered.length !== 1 ? "s" : ""} found
+            </p>
           )}
-
         </div>
-
       </section>
 
-
-      {/* ==========================================
-          LOADING
-      ========================================== */}
-
+      {/* User List */}
       {loading ? (
-
-        <div className="flex min-h-72 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-
+        <div className="flex min-h-64 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="text-center">
-
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-50">
-
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
-
-            </div>
-
-            <p className="mt-4 text-sm font-semibold text-slate-700">
-              Loading visits...
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Please wait a moment.
-            </p>
-
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" />
+            <p className="mt-3 text-sm text-slate-500">Loading users...</p>
           </div>
-
         </div>
-
-      ) : filteredVisits.length ===
-        0 ? (
-
-        /* ========================================
-           EMPTY
-        ======================================== */
-
-        <div className="flex min-h-80 items-center justify-center rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-
-          <div className="max-w-md">
-
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
-
-              <CalendarDays
-                size={30}
-                className="text-emerald-400"
-              />
-
-            </div>
-
-            <h3 className="mt-5 text-xl font-bold tracking-tight text-slate-900">
-              No visits found
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              No visits match your current search or status filter.
-            </p>
-
-            {activeFilter && (
-              <button
-                type="button"
-                onClick={
-                  clearFilters
-                }
-                className="
-                  mt-5
-                  rounded-xl
-                  border
-                  border-slate-200
-                  bg-white
-                  px-5
-                  py-3
-                  text-sm
-                  font-semibold
-                  text-slate-700
-                  transition
-
-                  hover:bg-slate-50
-                "
-              >
-                Clear Filters
-              </button>
-            )}
-
-          </div>
-
+      ) : filtered.length === 0 ? (
+        <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-6 text-center">
+          <Users size={32} className="text-slate-300" />
+          <h3 className="mt-3 text-lg font-bold text-slate-800">No users found</h3>
+          <p className="text-sm text-slate-500">Try adjusting your search or filters.</p>
+          {isFilterActive && (
+            <button onClick={clearFilters} className="mt-3 rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium hover:bg-slate-50">
+              Clear Filters
+            </button>
+          )}
         </div>
-
       ) : (
-
         <>
-          {/* ======================================
-              DESKTOP TABLE
-          ====================================== */}
-
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
-
-            <div className="overflow-x-auto">
-
-              <table className="w-full min-w-[1000px]">
-
-                <thead className="border-b border-slate-200 bg-slate-50">
-
-                  <tr>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Visit
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Buyer
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Property
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Date
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Time
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Status
-                    </th>
-
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                      Update
-                    </th>
-
+          {/* Desktop Table */}
+          <div className="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm lg:block">
+            <table className="w-full min-w-[700px] text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase text-slate-400">User</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase text-slate-400">Contact</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase text-slate-400">Role</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase text-slate-400">Status</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase text-slate-400">Created</th>
+                  <th className="px-3 py-2 text-left text-[10px] font-bold uppercase text-slate-400">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((user) => (
+                  <tr key={user.id} className="hover:bg-slate-50">
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                          <User size={14} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800">{user.name || "Unnamed"}</p>
+                          <p className="text-[10px] text-slate-400">#{user.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <p className="text-slate-700">{user.email || "—"}</p>
+                      <p className="text-[10px] text-slate-400">{user.mobile || "No mobile"}</p>
+                    </td>
+                    <td className="px-3 py-2"><RoleBadge role={user.role} /></td>
+                    <td className="px-3 py-2"><StatusBadge enabled={user.enabled} /></td>
+                    <td className="px-3 py-2 text-slate-600">{formatDate(user.createdAt)}</td>
+                    <td className="px-3 py-2">
+                      {user.role === "SUPER_ADMIN" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                          <ShieldCheck size={12} /> Protected
+                        </span>
+                      ) : user.enabled ? (
+                        <button
+                          onClick={() => toggleUser(user.id, false)}
+                          disabled={actionId === user.id}
+                          className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+                        >
+                          {actionId === user.id ? "Updating..." : "Disable"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => toggleUser(user.id, true)}
+                          disabled={actionId === user.id}
+                          className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50"
+                        >
+                          {actionId === user.id ? "Updating..." : "Enable"}
+                        </button>
+                      )}
+                    </td>
                   </tr>
-
-                </thead>
-
-
-                <tbody className="divide-y divide-slate-100">
-
-                  {filteredVisits.map(
-                    (visit) => (
-                      <tr
-                        key={visit.id}
-                        className="transition hover:bg-slate-50"
-                      >
-
-                        {/* VISIT */}
-
-                        <td className="px-5 py-5 align-top">
-
-                          <div className="flex items-center gap-3">
-
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                              <CalendarDays
-                                size={18}
-                              />
-                            </div>
-
-                            <div>
-
-                              <p className="font-bold text-slate-900">
-                                Visit #{visit.id}
-                              </p>
-
-                              <p className="mt-1 text-xs text-slate-400">
-                                Lead #{visit.leadId}
-                              </p>
-
-                            </div>
-
-                          </div>
-
-                        </td>
-
-
-                        {/* BUYER */}
-
-                        <td className="px-5 py-5 align-top">
-
-                          <div className="flex items-center gap-2">
-
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                              <User
-                                size={15}
-                              />
-                            </div>
-
-                            <div className="min-w-0">
-
-                              <p className="max-w-[160px] truncate text-sm font-semibold text-slate-700">
-                                {visit.buyerName ||
-                                  `Buyer #${visit.buyerId}`}
-                              </p>
-
-                              <p className="text-xs text-slate-400">
-                                Buyer
-                              </p>
-
-                            </div>
-
-                          </div>
-
-                        </td>
-
-
-                        {/* PROPERTY */}
-
-                        <td className="px-5 py-5 align-top">
-
-                          <div className="flex items-start gap-2">
-
-                            <Building2
-                              size={15}
-                              className="mt-0.5 shrink-0 text-slate-400"
-                            />
-
-                            <div className="min-w-0">
-
-                              <p className="max-w-[220px] truncate text-sm font-semibold text-slate-700">
-                                {visit.propertyTitle ||
-                                  `Property #${visit.propertyId}`}
-                              </p>
-
-                              <p className="mt-1 text-xs text-slate-400">
-                                Property #
-                                {visit.propertyId}
-                              </p>
-
-                            </div>
-
-                          </div>
-
-                        </td>
-
-
-                        {/* DATE */}
-
-                        <td className="px-5 py-5 align-top">
-
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-
-                            <CalendarDays
-                              size={15}
-                              className="text-slate-400"
-                            />
-
-                            {formatDate(
-                              visit.visitDate
-                            )}
-
-                          </div>
-
-                        </td>
-
-
-                        {/* TIME */}
-
-                        <td className="px-5 py-5 align-top">
-
-                          <div className="flex items-center gap-2 text-sm text-slate-600">
-
-                            <Clock
-                              size={15}
-                              className="text-slate-400"
-                            />
-
-                            {visit.visitTime ||
-                              "Not specified"}
-
-                          </div>
-
-                        </td>
-
-
-                        {/* STATUS */}
-
-                        <td className="px-5 py-5 align-top">
-
-                          <StatusBadge
-                            status={
-                              visit.status
-                            }
-                          />
-
-                        </td>
-
-
-                        {/* ACTION */}
-
-                        <td className="px-5 py-5 align-top">
-
-                          <div className="relative">
-
-                            <select
-                              value={
-                                visit.status ||
-                                "SCHEDULED"
-                              }
-                              disabled={
-                                actionLoading ===
-                                visit.id
-                              }
-                              onChange={(
-                                event
-                              ) =>
-                                handleStatusChange(
-                                  visit.id,
-                                  event.target
-                                    .value
-                                )
-                              }
-                              className="
-                                min-h-10
-                                w-40
-                                appearance-none
-                                rounded-xl
-                                border
-                                border-slate-200
-                                bg-white
-                                px-3
-                                py-2
-                                pr-8
-                                text-xs
-                                font-semibold
-                                text-slate-700
-                                shadow-sm
-                                outline-none
-                                transition
-
-                                focus:border-slate-500
-                                focus:ring-4
-                                focus:ring-slate-100
-
-                                disabled:cursor-not-allowed
-                                disabled:opacity-50
-                              "
-                            >
-
-                              {VISIT_STATUSES.map(
-                                (
-                                  status
-                                ) => (
-                                  <option
-                                    key={
-                                      status
-                                    }
-                                    value={
-                                      status
-                                    }
-                                  >
-                                    {status.replaceAll(
-                                      "_",
-                                      " "
-                                    )}
-                                  </option>
-                                )
-                              )}
-
-                            </select>
-
-                            <ChevronDown
-                              size={14}
-                              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                            />
-
-                          </div>
-
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
+                ))}
+              </tbody>
+            </table>
           </div>
 
-
-          {/* ======================================
-              MOBILE / TABLET CARDS
-          ====================================== */}
-
-          <div className="grid gap-4 lg:hidden">
-
-            {filteredVisits.map(
-              (visit) => {
-
-                const isUpdating =
-                  actionLoading ===
-                  visit.id;
-
-                return (
-                  <article
-                    key={visit.id}
-                    className="
-                      rounded-2xl
-                      border
-                      border-slate-200
-                      bg-white
-                      p-4
-                      shadow-sm
-                      transition
-
-                      hover:border-slate-300
-                      hover:shadow-md
-
-                      sm:p-5
-                    "
-                  >
-
-                    {/* CARD HEADER */}
-
-                    <div className="flex items-start justify-between gap-3">
-
-                      <div className="flex min-w-0 items-start gap-3">
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                          <CalendarDays
-                            size={18}
-                          />
-                        </div>
-
-                        <div className="min-w-0">
-
-                          <p className="text-sm font-bold text-slate-900">
-                            Visit #{visit.id}
-                          </p>
-
-                          <p className="mt-1 text-xs text-slate-500">
-                            Lead #{visit.leadId}
-                          </p>
-
-                        </div>
-
-                      </div>
-
-                      <StatusBadge
-                        status={
-                          visit.status
-                        }
-                      />
-
+          {/* Mobile Cards */}
+          <div className="grid gap-3 lg:hidden">
+            {filtered.map((user) => (
+              <div key={user.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+                      <User size={16} />
                     </div>
-
-
-                    {/* INFO GRID */}
-
-                    <div className="mt-5 grid grid-cols-2 gap-2">
-
-                      <InfoBox
-                        label="Buyer"
-                        value={
-                          visit.buyerName ||
-                          `Buyer #${visit.buyerId || "—"}`
-                        }
-                        icon={User}
-                      />
-
-                      <InfoBox
-                        label="Property"
-                        value={
-                          visit.propertyId
-                            ? `#${visit.propertyId}`
-                            : "—"
-                        }
-                        icon={
-                          Building2
-                        }
-                      />
-
-                      <InfoBox
-                        label="Date"
-                        value={formatDate(
-                          visit.visitDate
-                        )}
-                        icon={
-                          CalendarDays
-                        }
-                      />
-
-                      <InfoBox
-                        label="Time"
-                        value={
-                          visit.visitTime ||
-                          "Not specified"
-                        }
-                        icon={Clock}
-                      />
-
+                    <div>
+                      <p className="font-bold text-slate-900">{user.name || "Unnamed"}</p>
+                      <p className="text-[10px] text-slate-400">#{user.id}</p>
                     </div>
-
-
-                    {/* PROPERTY NAME */}
-
-                    {visit.propertyTitle && (
-                      <div className="mt-3 rounded-xl bg-slate-50 p-4">
-
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                          Property
-                        </p>
-
-                        <div className="mt-2 flex items-start gap-2">
-
-                          <Building2
-                            size={16}
-                            className="mt-0.5 shrink-0 text-slate-400"
-                          />
-
-                          <p className="text-sm font-semibold leading-5 text-slate-700">
-                            {visit.propertyTitle}
-                          </p>
-
-                        </div>
-
-                      </div>
-                    )}
-
-
-                    {/* UPDATE STATUS */}
-
-                    <div className="mt-4">
-
-                      <label
-                        htmlFor={`visit-status-${visit.id}`}
-                        className="mb-2 block text-[10px] font-bold uppercase tracking-wide text-slate-400"
-                      >
-                        Update Status
-                      </label>
-
-                      <div className="relative">
-
-                        <select
-                          id={`visit-status-${visit.id}`}
-                          value={
-                            visit.status ||
-                            "SCHEDULED"
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            handleStatusChange(
-                              visit.id,
-                              event.target
-                                .value
-                            )
-                          }
-                          disabled={
-                            isUpdating
-                          }
-                          className="
-                            min-h-11
-                            w-full
-                            appearance-none
-                            rounded-xl
-                            border
-                            border-slate-200
-                            bg-white
-                            px-4
-                            py-2.5
-                            pr-10
-                            text-sm
-                            font-semibold
-                            text-slate-700
-                            shadow-sm
-                            outline-none
-                            transition
-
-                            focus:border-slate-500
-                            focus:ring-4
-                            focus:ring-slate-100
-
-                            disabled:cursor-not-allowed
-                            disabled:opacity-50
-                          "
-                        >
-
-                          {VISIT_STATUSES.map(
-                            (
-                              status
-                            ) => (
-                              <option
-                                key={
-                                  status
-                                }
-                                value={
-                                  status
-                                }
-                              >
-                                {status.replaceAll(
-                                  "_",
-                                  " "
-                                )}
-                              </option>
-                            )
-                          )}
-
-                        </select>
-
-                        <ChevronDown
-                          size={16}
-                          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                        />
-
-                      </div>
-
-                      {isUpdating && (
-                        <div className="mt-2 flex items-center gap-2 text-xs font-medium text-blue-600">
-
-                          <RefreshCw
-                            size={13}
-                            className="animate-spin"
-                          />
-
-                          Updating visit...
-
-                        </div>
-                      )}
-
+                  </div>
+                  <StatusBadge enabled={user.enabled} />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-1 text-sm">
+                  <div>
+                    <p className="text-[10px] text-slate-400">Email</p>
+                    <p className="font-medium">{user.email || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400">Mobile</p>
+                    <p className="font-medium">{user.mobile || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400">Role</p>
+                    <RoleBadge role={user.role} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400">Created</p>
+                    <p className="font-medium">{formatDate(user.createdAt)}</p>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  {user.role === "SUPER_ADMIN" ? (
+                    <div className="flex items-center justify-center gap-2 rounded-lg bg-violet-50 py-1.5 text-sm font-semibold text-violet-700">
+                      <ShieldCheck size={16} /> Protected
                     </div>
-
-                  </article>
-                );
-              }
-            )}
-
+                  ) : user.enabled ? (
+                    <button
+                      onClick={() => toggleUser(user.id, false)}
+                      disabled={actionId === user.id}
+                      className="w-full rounded-lg border border-red-200 bg-red-50 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {actionId === user.id ? "Updating..." : "Disable User"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleUser(user.id, true)}
+                      disabled={actionId === user.id}
+                      className="w-full rounded-lg border border-emerald-200 bg-emerald-50 py-1.5 text-sm font-semibold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                      {actionId === user.id ? "Updating..." : "Enable User"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
 
+      {/* Summary Footer */}
+      {!loading && users.length > 0 && (
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-[10px] font-bold uppercase text-slate-400">Summary</p>
+              <p className="text-sm font-semibold text-slate-700">
+                {active} active · {disabled} disabled · {total} total
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium">Buyers {buyers}</span>
+              <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium">Sellers {sellers}</span>
+              <span className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-medium">Admins {admins}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-export default VisitsManagement;
